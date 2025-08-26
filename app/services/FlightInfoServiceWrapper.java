@@ -1,8 +1,8 @@
 package services;
 
 import com.compassites.model.*;
+import com.compassites.model.traveller.TravellerMasterInfo;
 import com.compassites.model.travelomatrix.ResponseModels.TraveloMatrixFaruleReply;
-import com.fasterxml.jackson.databind.JsonNode;
 import dto.FareCheckRulesResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,9 +33,11 @@ public class FlightInfoServiceWrapper {
 	@Autowired
 	private TraveloMatrixFlightInfoService traveloMatrixFlightInfoServiceImpl;
 
+	@Autowired
+	private IndigoFlightInfoService indigoFlightInfoService;
 
 	public FlightItinerary getBaggageInfo(FlightItinerary flightItinerary,
-			SearchParameters searchParams, String provider, boolean seamen) {
+			SearchParameters searchParams, String provider, boolean seamen, TravellerMasterInfo travellerMasterInfo) {
 		FlightItinerary response = null;
 		if ("Travelport".equalsIgnoreCase(provider)) {
 			response = flightItinerary;
@@ -48,6 +50,8 @@ public class FlightInfoServiceWrapper {
 					flightItinerary, searchParams, seamen);
 		}else if ("TraveloMatrix".equalsIgnoreCase(provider)) {
 			response = traveloMatrixFlightInfoServiceImpl.getFlightInfo(flightItinerary);
+		} else if("Indigo".equalsIgnoreCase(provider)) {
+			response = indigoFlightInfoService.getFlightInfo(flightItinerary,travellerMasterInfo);
 		}
 		return response;
 	}
@@ -74,6 +78,8 @@ public class FlightInfoServiceWrapper {
 					flightItinerary, searchParams, seamen);
 		} else if (Mystifly.PROVIDER.equalsIgnoreCase(provider)) {
 			fareRules = mystiflyFlightInfoService.getMystiflyFareRules(flightItinerary, searchParams, seamen);
+		} else if("Indigo".equalsIgnoreCase(provider)) {
+			fareRules = indigoFlightInfoService.getCancellationFee(flightItinerary);
 		}
 		return fareRules;
 	}

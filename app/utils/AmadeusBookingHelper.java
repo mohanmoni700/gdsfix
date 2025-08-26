@@ -2,11 +2,11 @@ package utils;
 
 import com.amadeus.xml.farqnr_07_1_1a.FareCheckRulesReply;
 import com.amadeus.xml.itares_05_2_ia.AirSellFromRecommendationReply;
-import com.amadeus.xml.pnracc_11_3_1a.*;
-import com.amadeus.xml.pnracc_11_3_1a.PNRReply.OriginDestinationDetails;
-import com.amadeus.xml.pnracc_11_3_1a.PNRReply.TravellerInfo;
-import com.amadeus.xml.pnracc_11_3_1a.PNRReply.TravellerInfo.PassengerData;
-import com.amadeus.xml.pnracc_11_3_1a.ReferenceInfoType;
+import com.amadeus.xml.pnracc_14_1_1a.*;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply.TravellerInfo;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply.TravellerInfo.PassengerData;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply.OriginDestinationDetails;
+import com.amadeus.xml.pnracc_14_1_1a.ReferenceInfoType;
 import com.amadeus.xml.tipnrr_12_4_1a.FareInformativePricingWithoutPNRReply;
 import com.amadeus.xml.tpcbrr_12_4_1a.*;
 import com.amadeus.xml.tpcbrr_12_4_1a.BaggageDetailsTypeI;
@@ -24,6 +24,7 @@ import com.compassites.model.*;
 import com.compassites.model.traveller.Traveller;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.compassites.model.amadeus.AmadeusPaxInformation;
+
 import dto.*;
 import models.*;
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,7 @@ import org.springframework.stereotype.Component;
 import services.AmadeusSourceOfficeService;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -195,7 +197,7 @@ public class AmadeusBookingHelper {
 
         AmadeusPaxInformation amadeusPaxInformation = new AmadeusPaxInformation();
 
-        com.amadeus.xml.pnracc_11_3_1a.ElementManagementSegmentType passengerReference = travellerInfo.getElementManagementPassenger();
+        com.amadeus.xml.pnracc_14_1_1a.ElementManagementSegmentType passengerReference = travellerInfo.getElementManagementPassenger();
         String referenceNumber = String.valueOf(passengerReference.getReference().getNumber());
         String lineNumber = String.valueOf(passengerReference.getLineNumber());
         PNRReply.TravellerInfo.PassengerData passengerData = travellerInfo.getPassengerData().get(0);
@@ -209,7 +211,7 @@ public class AmadeusBookingHelper {
         String[] names = firstNameResponse.split("\\s");
         firstName = names[0];
 
-        if (names.length > 1) {
+        if (names.length > 0) {
             for (String name : names) {
                 if (name.equalsIgnoreCase("Mr") || name.equalsIgnoreCase("Mrs") || name.equalsIgnoreCase("Ms") || name.equalsIgnoreCase("Miss") || name.equalsIgnoreCase("Master") || name.equalsIgnoreCase("Mstr") || name.equalsIgnoreCase("Capt")) {
                     salutation = WordUtils.capitalizeFully(name);
@@ -1980,7 +1982,6 @@ public class AmadeusBookingHelper {
         try {
 
             Map<String, FareCheckRulesReply> fareReplies = fareRules.processFareRulesJourneyWise(amadeusSessionWrapper, fareComponents);
-            logger.debug("Fare replies: {}", fareReplies);
 
             if (fareReplies.isEmpty()) {
                 logger.warn("No fare rules retrieved for components: {}", fareComponents);
@@ -1992,7 +1993,9 @@ public class AmadeusBookingHelper {
                 FareCheckRulesReply fareCheckRulesReply = entry.getValue();
 
                 Map<String, Map<String, List<String>>> fareRulesMap = AmadeusHelper.getFareCheckRulesBenzy(fareCheckRulesReply);
-                List<String> detailedFareRuleList = AmadeusHelper.getDetailedFareDetailsList(fareCheckRulesReply.getTariffInfo().get(0).getFareRuleText());
+//                List<String> detailedFareRuleList = AmadeusHelper.getDetailedFareDetailsList(fareCheckRulesReply.getTariffInfo().get(0).getFareRuleText());
+                List<String> detailedFareRuleList = AmadeusHelper.getDetailedFareRulesList(fareCheckRulesReply);
+
                 String cabinClass = getCabinClassFromFareCheckRulesReply(fareCheckRulesReply);
                 List<FareType> fareTypes = getCabinDetailsFromFareCheckRulesReply(fareCheckRulesReply);
                 FareCheckRulesResponse fareCheckRulesResponse = new FareCheckRulesResponse();
@@ -2142,7 +2145,7 @@ public class AmadeusBookingHelper {
 
             for (PNRReply.TravellerInfo travellerInfo : travellerInfoList) {
 
-                com.amadeus.xml.pnracc_11_3_1a.ElementManagementSegmentType passengerReference = travellerInfo.getElementManagementPassenger();
+                ElementManagementSegmentType passengerReference = travellerInfo.getElementManagementPassenger();
                 String referenceNumber = String.valueOf(passengerReference.getReference().getNumber());
                 PNRReply.TravellerInfo.PassengerData passengerData = travellerInfo.getPassengerData().get(0);
 
@@ -2256,10 +2259,10 @@ public class AmadeusBookingHelper {
         Map<String, AmadeusSegmentRefDTO> segmetRefMap = new HashMap<>();
 
         try {
-            List<OriginDestinationDetails> originDestinationDetailsList = pnrReply.getOriginDestinationDetails();
-            for (OriginDestinationDetails originDestinationDetails : originDestinationDetailsList) {
+            List<PNRReply.OriginDestinationDetails> originDestinationDetailsList = pnrReply.getOriginDestinationDetails();
+            for (PNRReply.OriginDestinationDetails originDestinationDetails : originDestinationDetailsList) {
 
-                List<OriginDestinationDetails.ItineraryInfo> itineraryInfoList = originDestinationDetails.getItineraryInfo();
+                List<PNRReply.OriginDestinationDetails.ItineraryInfo> itineraryInfoList = originDestinationDetails.getItineraryInfo();
                 for (OriginDestinationDetails.ItineraryInfo itineraryInfo : itineraryInfoList) {
 
                     AmadeusSegmentRefDTO amadeusSegmentRefDTO = new AmadeusSegmentRefDTO();
@@ -2273,7 +2276,7 @@ public class AmadeusBookingHelper {
                         ReferencingDetailsType127526C referencingDetailsType127526C = elementManagementSegmentType.getReference();
                         String segmentRefNo = String.valueOf(referencingDetailsType127526C.getNumber());
 
-                        com.amadeus.xml.pnracc_11_3_1a.TravelProductInformationTypeI travelProductInformationTypeI = itineraryInfo.getTravelProduct();
+                        TravelProductInformationTypeI185722S travelProductInformationTypeI = itineraryInfo.getTravelProduct();
                         String originCityCode = travelProductInformationTypeI.getBoardpointDetail().getCityCode();
                         String destinationCityCode = travelProductInformationTypeI.getOffpointDetail().getCityCode();
 
@@ -2340,11 +2343,11 @@ public class AmadeusBookingHelper {
 
                     if (dataElementsIndiv.getElementManagementData() != null) {
 
-                        com.amadeus.xml.pnracc_11_3_1a.ElementManagementSegmentType elementManagementData = dataElementsIndiv.getElementManagementData();
+                        ElementManagementSegmentType elementManagementData = dataElementsIndiv.getElementManagementData();
                         String segmentName = elementManagementData.getSegmentName();
 
                         if (segmentName != null && segmentName.equalsIgnoreCase("SSR")) {
-                            SpecialRequirementsDetailsTypeI serviceRequest = dataElementsIndiv.getServiceRequest();
+                            SpecialRequirementsDetailsTypeI38284S serviceRequest = dataElementsIndiv.getServiceRequest();
                             if (serviceRequest != null && serviceRequest.getSsr() != null) {
                                 SpecialRequirementsTypeDetailsTypeI ssr = serviceRequest.getSsr();
 
@@ -2447,11 +2450,11 @@ public class AmadeusBookingHelper {
                     }
 
                     if (dataElementsIndiv.getElementManagementData() != null) {
-                        com.amadeus.xml.pnracc_11_3_1a.ElementManagementSegmentType elementManagementData = dataElementsIndiv.getElementManagementData();
+                        ElementManagementSegmentType elementManagementData = dataElementsIndiv.getElementManagementData();
                         String segmentName = elementManagementData.getSegmentName();
 
                         if (segmentName != null && segmentName.equalsIgnoreCase("SSR")) {
-                            SpecialRequirementsDetailsTypeI serviceRequest = dataElementsIndiv.getServiceRequest();
+                            SpecialRequirementsDetailsTypeI38284S serviceRequest = dataElementsIndiv.getServiceRequest();
 
                             if (!dataElementsIndiv.getSeatPaxInfo().isEmpty() && serviceRequest != null && serviceRequest.getSsr() != null) {
                                 SpecialRequirementsTypeDetailsTypeI ssr = serviceRequest.getSsr();
@@ -2476,7 +2479,7 @@ public class AmadeusBookingHelper {
                                 freeSeatDetails.setSeatType(ssrType);
 
                                 if (serviceRequest.getSsrb() != null && !serviceRequest.getSsrb().isEmpty()) {
-                                    SpecialRequirementsDataDetailsTypeI ssrb = serviceRequest.getSsrb().get(0);
+                                    SpecialRequirementsDataDetailsTypeI64826C ssrb = serviceRequest.getSsrb().get(0);
                                     freeSeatDetails.setSeatNumber(ssrb.getData());
                                     if (ssrb.getSeatType() != null && !ssrb.getSeatType().isEmpty()) {
                                         for (String seatType : ssrb.getSeatType()) {
@@ -2526,7 +2529,7 @@ public class AmadeusBookingHelper {
                 List<PNRReply.OriginDestinationDetails.ItineraryInfo> itineraryInfo = originDestinationDetails.getItineraryInfo();
 
                 for (PNRReply.OriginDestinationDetails.ItineraryInfo itineraryInfo1 : itineraryInfo) {
-                    com.amadeus.xml.pnracc_11_3_1a.ElementManagementSegmentType elementManagementItinerary = itineraryInfo1.getElementManagementItinerary();
+                    ElementManagementSegmentType elementManagementItinerary = itineraryInfo1.getElementManagementItinerary();
                     if (elementManagementItinerary != null) {
                         String segmentName = elementManagementItinerary.getSegmentName();
 
@@ -2540,32 +2543,32 @@ public class AmadeusBookingHelper {
                             }
 
                             // Extract origin, destination, airlineCode, flightNumber
-                            com.amadeus.xml.pnracc_11_3_1a.TravelProductInformationTypeI travelProduct = itineraryInfo1.getTravelProduct();
+                            TravelProductInformationTypeI185722S travelProduct = itineraryInfo1.getTravelProduct();
                             if (travelProduct != null) {
-                                LocationTypeI2784C boardPointDetail = travelProduct.getBoardpointDetail();
+                                LocationTypeI192814C boardPointDetail = travelProduct.getBoardpointDetail();
                                 if (boardPointDetail != null) {
                                     segmentDetails.put("origin", boardPointDetail.getCityCode());
                                 }
 
-                                LocationTypeI2784C offPointDetail = travelProduct.getOffpointDetail();
+                                LocationTypeI192814C offPointDetail = travelProduct.getOffpointDetail();
                                 if (offPointDetail != null) {
                                     segmentDetails.put("destination", offPointDetail.getCityCode());
                                 }
 
-                                CompanyIdentificationTypeI2785C companyDetail = travelProduct.getCompanyDetail();
+                                CompanyIdentificationTypeI192810C companyDetail = travelProduct.getCompanyDetail();
                                 if (companyDetail != null) {
                                     segmentDetails.put("airlineCode", companyDetail.getIdentification());
                                 }
 
-                                ProductIdentificationDetailsTypeI2786C productDetails = travelProduct.getProductDetails();
+                                ProductIdentificationDetailsTypeI192811C productDetails = travelProduct.getProductDetails();
                                 if (productDetails != null) {
                                     segmentDetails.put("flightNumber", productDetails.getIdentification());
                                 }
 
-                                ProductDateTimeTypeI171495C product = travelProduct.getProduct();
+                                ProductDateTimeTypeI260466C product = travelProduct.getProduct();
                                 if (product != null) {
                                     String departureDate = product.getDepDate();
-                                    segmentDetails.put("departureDate",departureDate);
+                                    segmentDetails.put("departureDate", departureDate);
                                 }
                             }
 
@@ -2623,7 +2626,7 @@ public class AmadeusBookingHelper {
 
                 if (ticketingOfficeId != null) {
 
-                    if (amadeusSourceOfficeService!=null && amadeusSourceOfficeService.getPrioritySourceOffice().getOfficeId().equalsIgnoreCase(ticketingOfficeId)) {
+                    if (amadeusSourceOfficeService != null && amadeusSourceOfficeService.getPrioritySourceOffice().getOfficeId().equalsIgnoreCase(ticketingOfficeId)) {
 
                         BOMVS34C3Eligibility bomvs34C3Eligibility = BOMVS34C3Eligibility.getEligibleAirlineCodeByValidatingCarrier(validatingCarrierCode);
 
@@ -2632,7 +2635,7 @@ public class AmadeusBookingHelper {
                             masterInfo.setAutoReFund(bomvs34C3Eligibility.isRefund());
                         }
 
-                    } else if (amadeusSourceOfficeService!=null && amadeusSourceOfficeService.getDelhiSourceOffice() != null && amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId().equalsIgnoreCase(ticketingOfficeId)) {
+                    } else if (amadeusSourceOfficeService != null && amadeusSourceOfficeService.getDelhiSourceOffice() != null && amadeusSourceOfficeService.getDelhiSourceOffice().getOfficeId().equalsIgnoreCase(ticketingOfficeId)) {
 
                         DELVS38LFEligibility delvs38LFEligibility = DELVS38LFEligibility.getEligibleAirlineCodeByValidatingCarrier(validatingCarrierCode);
 
@@ -2651,6 +2654,82 @@ public class AmadeusBookingHelper {
         } catch (Exception e) {
             logger.debug("Error with getTicketEligibilityFromTicketDisplayTSTReply {} : ", e.getMessage(), e);
         }
-
     }
+
+    public static List<AirlineSpecificQueueAndTimeLimitDetails> getAirlineSpecificTicketingTimeLimit(PNRReply pnrReply) {
+
+        PNRReply.DataElementsMaster dataElementsMaster = pnrReply.getDataElementsMaster();
+
+        List<PNRReply.DataElementsMaster.DataElementsIndiv> dataElementsIndivList = dataElementsMaster.getDataElementsIndiv();
+
+        List<AirlineSpecificQueueAndTimeLimitDetails> airlineSpecificQueueAndTimeLimitDetailsList = new ArrayList<>();
+        for (PNRReply.DataElementsMaster.DataElementsIndiv dataElementsIndiv : dataElementsIndivList) {
+
+            com.amadeus.xml.pnracc_14_1_1a.ElementManagementSegmentType elementManagementData = dataElementsIndiv.getElementManagementData();
+
+            String segmentName = elementManagementData.getSegmentName();
+
+
+            switch (segmentName) {
+
+                case "OPC":
+
+                    //Add more keywords if identified here
+                    List<String> expectedOPCIdentificationKeyWords = Arrays.asList("CANCELLATION DUE TO NO TICKET");
+
+                    OptionElementType optionElement = dataElementsIndiv.getOptionElement();
+                    OptionElementInformationType optionElementInfo = optionElement.getOptionElementInfo();
+
+                    String freeText = optionElementInfo.getFreetext();
+
+                    for (String keyword : expectedOPCIdentificationKeyWords) {
+                        if (freeText.contains(keyword)) {
+
+                            AirlineSpecificQueueAndTimeLimitDetails airlineSpecificQueueAndTimeLimitDetails = new AirlineSpecificQueueAndTimeLimitDetails();
+
+                            String date = optionElementInfo.getDate();
+                            String time = optionElementInfo.getTime();
+                            String mainQueueOffice = optionElementInfo.getMainOffice();
+                            BigInteger queueNumber = optionElementInfo.getQueue();
+                            BigInteger categoryNumber = optionElementInfo.getCategory();
+
+                            String[] parts = freeText.split(" ");
+
+                            String airline = parts[0];
+                            String timeZone = parts[parts.length - 3];
+
+//                        Pattern pattern = Pattern.compile("^(\\S+) .* (\\S+) TIME ZONE$");
+//                        Matcher matcher = pattern.matcher(freeText);
+//
+//                        String airline = matcher.group(1);
+//                        String timeZone = matcher.group(2);
+
+                            airlineSpecificQueueAndTimeLimitDetails.setAirline(airline);
+                            airlineSpecificQueueAndTimeLimitDetails.setDate(date);
+                            airlineSpecificQueueAndTimeLimitDetails.setTime(time);
+                            airlineSpecificQueueAndTimeLimitDetails.setTimeZone(timeZone);
+                            airlineSpecificQueueAndTimeLimitDetails.setMainQueueOffice(mainQueueOffice);
+                            airlineSpecificQueueAndTimeLimitDetails.setQueueNumber(queueNumber);
+                            airlineSpecificQueueAndTimeLimitDetails.setCategory(categoryNumber);
+
+                            airlineSpecificQueueAndTimeLimitDetailsList.add(airlineSpecificQueueAndTimeLimitDetails);
+                        }
+                    }
+
+                    break;
+
+                case "SSR":
+
+
+                    break;
+
+                default:
+
+                    break;
+            }
+        }
+
+        return airlineSpecificQueueAndTimeLimitDetailsList;
+    }
+
 }
