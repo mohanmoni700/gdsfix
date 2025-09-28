@@ -267,11 +267,22 @@ public class AdvancedSplitTicketMerger {
             List<FlightItinerary> firstSegmentFlights,
             boolean isSourceAirportDomestic, boolean isDestinationAirportDomestic, int maxResults) {
         
+        long startTime = System.currentTimeMillis();
         List<FlightItinerary> allIntermediateConnections = new ArrayList<>();
-        System.out.println("findAllIntermediateConnections ");
-        logger.info("=== ANALYZING INTERMEDIATE CONNECTIONS ===");
+        
+        System.out.println("findAllIntermediateConnections - Starting optimization");
+        logger.info("=== ANALYZING INTERMEDIATE CONNECTIONS (OPTIMIZED) ===");
         logger.info("Looking for: " + fromLocation + " -> [City1] -> [City2] -> " + toLocation);
         logger.info("Maximum results allowed: " + maxResults);
+        logger.info("First segment flights: " + firstSegmentFlights.size());
+        logger.info("Available locations: " + concurrentHashMap.keySet());
+        
+        // Performance optimization: Limit the number of first segment flights to process
+        int MAX_FIRST_SEGMENT_FLIGHTS = Math.min(10, firstSegmentFlights.size()); // Process max 10 first segment flights
+        int MAX_INTERMEDIATE_FLIGHTS_PER_LOCATION = 20; // Process max 20 flights per intermediate location
+        
+        logger.info("Performance limits: Max first segment flights=" + MAX_FIRST_SEGMENT_FLIGHTS + 
+                   ", Max intermediate flights per location=" + MAX_INTERMEDIATE_FLIGHTS_PER_LOCATION);
         
         int totalIntermediateLocationsChecked = 0;
         int locationsWithFlights = 0;
@@ -307,22 +318,37 @@ public class AdvancedSplitTicketMerger {
                 return Integer.compare(stops1, stops2); // Lower stops get higher priority
             });
             
+            // Performance optimization: Limit the number of intermediate flights processed per location
+            List<FlightItinerary> limitedIntermediateFlights = intermediateToDestination.stream()
+                .limit(MAX_INTERMEDIATE_FLIGHTS_PER_LOCATION)
+                .collect(java.util.stream.Collectors.toList());
+            
+            logger.info("Processing " + limitedIntermediateFlights.size() + " intermediate flights (limited from " + intermediateToDestination.size() + ")");
+            
             int intermediateValidConnections = 0;
             int routeMatchesForThisLocation = 0;
             
-            // Check combinations of first segment flights until limit is reached
+            // Performance optimization: Limit first segment flights processed
+            int firstFlightProcessed = 0;
             for (FlightItinerary firstFlight : firstSegmentFlights) {
+                // Performance limit: Process max 10 first segment flights
+                if (firstFlightProcessed >= MAX_FIRST_SEGMENT_FLIGHTS) {
+                    logger.info("Reached limit of " + MAX_FIRST_SEGMENT_FLIGHTS + " first segment flights processed for location: " + intermediateLocation);
+                    break;
+                }
+                
                 // Early termination if we've reached the limit
                 if (allIntermediateConnections.size() >= maxResults) {
                     logger.info("Reached maximum results limit (" + maxResults + ") for intermediate connections");
                     break;
                 }
+                
                 // Skip if the first segment passes through the final destination en-route
                 if (itineraryPassesThroughButNotEndAt(firstFlight, toLocation)) {
                     logger.info("Skipping first segment that passes through final destination en-route: " + toLocation);
                     continue;
                 }
-                //System.out.println("firstFlight loop "+firstFlight.getPricingInformation().getProvider()+" intermediateLocation "+intermediateLocation);
+                
                 String firstFlightDestination = getLastDestination(firstFlight);
                 
                 // Check if first flight goes to this intermediate location
@@ -331,10 +357,11 @@ public class AdvancedSplitTicketMerger {
                 }
                 
                 routeMatchesForThisLocation++;
-                logger.info("Route match found: " + fromLocation + " -> " + intermediateLocation);
+                firstFlightProcessed++;
+                logger.debug("Route match found: " + fromLocation + " -> " + intermediateLocation + " (first flight #" + firstFlightProcessed + ")");
                 
-                // Check combinations of intermediate flights until limit is reached
-                for (FlightItinerary intermediateFlight : intermediateToDestination) {
+                // Check combinations of intermediate flights until limit is reached (using limited flights)
+                for (FlightItinerary intermediateFlight : limitedIntermediateFlights) {
                     //System.out.println("intermediateFlight loop "+intermediateFlight.getPricingInformation().getProvider()+" intermediateLocation "+intermediateLocation);
                     // Early termination if we've reached the limit
                     if (allIntermediateConnections.size() >= maxResults) {
@@ -414,6 +441,17 @@ public class AdvancedSplitTicketMerger {
         } else if (allIntermediateConnections.size() >= maxResults) {
             logger.warn("WARNING: Intermediate connections limited to " + maxResults + " to prevent system crashes");
         }
+        
+        // Performance timing summary
+        long endTime = System.currentTimeMillis();
+        long totalDuration = endTime - startTime;
+        logger.info("=== PERFORMANCE SUMMARY ===");
+        logger.info("findAllIntermediateConnections completed in: " + totalDuration + "ms (" + (totalDuration/1000.0) + " seconds)");
+        logger.info("Total intermediate locations checked: " + totalIntermediateLocationsChecked);
+        logger.info("Locations with flights to destination: " + locationsWithFlights);
+        logger.info("Total valid intermediate connections: " + totalValidConnections);
+        logger.info("Final intermediate connections: " + allIntermediateConnections.size());
+        System.out.println("findAllIntermediateConnections completed in: " + totalDuration + "ms (" + (totalDuration/1000.0) + " seconds)");
         
         return allIntermediateConnections;
     }
@@ -690,7 +728,23 @@ public class AdvancedSplitTicketMerger {
                 if (totalPricing.getAdtTotalPrice() != null && currentPricing.getAdtTotalPrice() != null) {
                     totalPricing.setAdtTotalPrice(totalPricing.getAdtTotalPrice().add(currentPricing.getAdtTotalPrice()));
                 }
-                
+
+                if (totalPricing.getChdBasePrice() != null && currentPricing.getChdBasePrice() != null) {
+                    totalPricing.setChdBasePrice(totalPricing.getChdBasePrice().add(currentPricing.getChdBasePrice()));
+                }
+
+                if (totalPricing.getChdTotalPrice() != null && currentPricing.getChdTotalPrice() != null) {
+                    totalPricing.setChdTotalPrice(totalPricing.getChdTotalPrice().add(currentPricing.getChdTotalPrice()));
+                }
+
+                if (totalPricing.getInfBasePrice() != null && currentPricing.getInfBasePrice() != null) {
+                    totalPricing.setInfBasePrice(totalPricing.getInfBasePrice().add(currentPricing.getInfBasePrice()));
+                }
+
+                if (totalPricing.getInfTotalPrice() != null && currentPricing.getInfTotalPrice() != null) {
+                    totalPricing.setInfTotalPrice(totalPricing.getInfTotalPrice().add(currentPricing.getInfTotalPrice()));
+                }
+
                 if (totalPricing.getTotalPrice() != null && currentPricing.getTotalPrice() != null) {
                     totalPricing.setTotalPrice(totalPricing.getTotalPrice().add(currentPricing.getTotalPrice()));
                 }
@@ -704,13 +758,104 @@ public class AdvancedSplitTicketMerger {
                 }
             }
             
+            // Aggregate passenger taxes from all journeys
+            List<PassengerTax> aggregatedPassengerTaxes = aggregatePassengerTaxes(splitPricing);
+            totalPricing.setPassengerTaxes(aggregatedPassengerTaxes);
+            
             mergedItinerary.setPricingInformation(totalPricing);
             
         } catch (Exception e) {
             logger.error("Error creating total pricing: " + e.getMessage());
         }
     }
-
+    
+    /**
+     * Groups all passengers by type (ADT, CHD) and creates one object per passenger type.
+     * Each passenger type gets a single object with combined taxes from all journeys.
+     */
+    private List<PassengerTax> aggregatePassengerTaxes(List<PricingInformation> splitPricing) {
+        List<PassengerTax> aggregatedTaxes = new ArrayList<>();
+        Map<String, PassengerTax> taxMap = new HashMap<>();
+        
+        try {
+            // Process each journey's pricing information
+            for (int journeyIndex = 0; journeyIndex < splitPricing.size(); journeyIndex++) {
+                PricingInformation pricing = splitPricing.get(journeyIndex);
+                
+                if (pricing != null && pricing.getPassengerTaxes() != null) {
+                    for (PassengerTax passengerTax : pricing.getPassengerTaxes()) {
+                        String passengerType = passengerTax.getPassengerType();
+                        
+                        if (taxMap.containsKey(passengerType)) {
+                            // Update existing tax entry for this passenger type
+                            PassengerTax existingTax = taxMap.get(passengerType);
+                            
+                            // Add to total tax
+                            if (existingTax.getTotalTax() != null && passengerTax.getTotalTax() != null) {
+                                existingTax.setTotalTax(existingTax.getTotalTax().add(passengerTax.getTotalTax()));
+                            }
+                            
+                            // Add to journey-specific taxes
+                            if (journeyIndex == 0) {
+                                // First journey - add to onward tax
+                                if (existingTax.getOnwardTax() != null && passengerTax.getTotalTax() != null) {
+                                    existingTax.setOnwardTax(existingTax.getOnwardTax().add(passengerTax.getTotalTax()));
+                                } else if (passengerTax.getTotalTax() != null) {
+                                    existingTax.setOnwardTax(passengerTax.getTotalTax());
+                                }
+                            } else {
+                                // Second journey - add to return tax
+                                if (existingTax.getReturnTax() != null && passengerTax.getTotalTax() != null) {
+                                    existingTax.setReturnTax(existingTax.getReturnTax().add(passengerTax.getTotalTax()));
+                                } else if (passengerTax.getTotalTax() != null) {
+                                    existingTax.setReturnTax(passengerTax.getTotalTax());
+                                }
+                            }
+                            
+                        } else {
+                            // Create new tax entry for this passenger type
+                            PassengerTax newTax = new PassengerTax();
+                            newTax.setPassengerType(passengerTax.getPassengerType());
+                            newTax.setPassengerCount(passengerTax.getPassengerCount());
+                            newTax.setTotalTax(passengerTax.getTotalTax());
+                            
+                            // Set journey-specific tax fields
+                            if (journeyIndex == 0) {
+                                // First journey - onward tax
+                                newTax.setOnwardTax(passengerTax.getTotalTax());
+                                newTax.setReturnTax(null);
+                            } else {
+                                // Second journey - return tax
+                                newTax.setOnwardTax(null);
+                                newTax.setReturnTax(passengerTax.getTotalTax());
+                            }
+                            
+                            taxMap.put(passengerType, newTax);
+                        }
+                    }
+                }
+            }
+            
+            // Convert map to list
+            aggregatedTaxes.addAll(taxMap.values());
+            
+            logger.debug("Created aggregated passenger taxes: {} objects (one per passenger type) from {} journeys", 
+                        aggregatedTaxes.size(), splitPricing.size());
+            
+            // Log details for each passenger type
+            for (PassengerTax tax : aggregatedTaxes) {
+                logger.debug("PassengerType: {}, Count: {}, TotalTax: {}, OnwardTax: {}, ReturnTax: {}", 
+                           tax.getPassengerType(), tax.getPassengerCount(), tax.getTotalTax(), 
+                           tax.getOnwardTax(), tax.getReturnTax());
+            }
+            
+        } catch (Exception e) {
+            logger.error("Error creating aggregated passenger taxes: " + e.getMessage());
+        }
+        
+        return aggregatedTaxes;
+    }
+    
     private int getTotalStops(FlightItinerary flightItinerary) {
         if (flightItinerary.getJourneyList() == null || flightItinerary.getJourneyList().isEmpty()) {
             return 0;
