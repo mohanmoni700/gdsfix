@@ -1,16 +1,19 @@
 package com.compassites.GDSWrapper.amadeus;
 
+import com.amadeus.xml._2010._06.etr_types_v2.ProviderType;
+import com.amadeus.xml._2010._06.servicebookandprice_v1.AMAServiceBookPriceServiceRQ;
 import com.amadeus.xml.tpicgq_17_1_1a.AttributeInformationTypeU;
 import com.amadeus.xml.tpicgq_17_1_1a.AttributeType;
 import com.amadeus.xml.tpicgq_17_1_1a.PricingOptionKeyType;
 import com.amadeus.xml.tpicgq_17_1_1a.ServiceIntegratedCatalogue;
 import com.amadeus.xml.tpscgq_17_1_1a.*;
-import com.compassites.model.AirSegmentInformation;
-import com.compassites.model.FlightItinerary;
-import com.compassites.model.Journey;
+import com.compassites.model.*;
+import dto.ancillary.AncillaryBookingRequest;
 import models.AncillaryServiceRequest;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class AncillaryServiceReq {
@@ -130,8 +133,8 @@ public class AncillaryServiceReq {
 
                     // Departure date
                     String departureDate = airSegmentInformation.getToDate();
-                    if(departureDate.length() > 6){
-                        departureDate = departureDate.substring(0,6);
+                    if (departureDate.length() > 6) {
+                        departureDate = departureDate.substring(0, 6);
                     }
                     flightDate.setDepartureDate(departureDate);
                     flightDetails.setFlightDate(flightDate);
@@ -182,7 +185,6 @@ public class AncillaryServiceReq {
             }
 
             serviceStandaloneCatalogue.getFlightInfo().addAll(flightInfoList);
-
 
 
             //Pricing option being set here
@@ -301,7 +303,7 @@ public class AncillaryServiceReq {
                 fareBasis = airSegmentList.get(0).getFareBasis();
 
                 for (AirSegmentInformation airSegmentInformation : airSegmentList) {
-                  
+
                     ++counter;
 
                     ServiceStandaloneCatalogue.FlightInfo flightInfo = new ServiceStandaloneCatalogue.FlightInfo();
@@ -311,8 +313,8 @@ public class AncillaryServiceReq {
 
                     // Departure date
                     String departureDate = airSegmentInformation.getToDate();
-                    if(departureDate.length() > 6){
-                        departureDate = departureDate.substring(0,6);
+                    if (departureDate.length() > 6) {
+                        departureDate = departureDate.substring(0, 6);
                     }
                     flightDate.setDepartureDate(departureDate);
 
@@ -432,7 +434,132 @@ public class AncillaryServiceReq {
 
         }
 
+        //This Creates the request body for amadeus for ancillary payment confirmation
+        public static AMAServiceBookPriceServiceRQ getAncillaryPaymentConfirmationRequest(AncillaryBookingRequest ancillaryBookingRequest) {
 
+            List<BaggageDetails> baggageDetailsList = ancillaryBookingRequest.getBaggageDetailsList();
+            List<MealDetails> mealDetailsList = ancillaryBookingRequest.getMealDetailsList();
+
+            AMAServiceBookPriceServiceRQ amaServiceBookPriceServiceRQ = new AMAServiceBookPriceServiceRQ();
+            amaServiceBookPriceServiceRQ.setVersion(BigDecimal.valueOf(1));
+
+            int[] tidCount = {1};
+
+            if (baggageDetailsList != null && !baggageDetailsList.isEmpty()) {
+                List<AMAServiceBookPriceServiceRQ.Product> productList = getAdditionalBaggageProductList(baggageDetailsList , tidCount);
+                amaServiceBookPriceServiceRQ.getProduct().addAll(productList);
+            }
+
+            if (mealDetailsList != null && !mealDetailsList.isEmpty()) {
+                List<AMAServiceBookPriceServiceRQ.Product> productList = getAdditionalMealProductList(mealDetailsList, tidCount);
+                amaServiceBookPriceServiceRQ.getProduct().addAll(productList);
+            }
+
+            return amaServiceBookPriceServiceRQ;
+        }
+    }
+
+    //Creates Request body for baggage confirmation
+    private static List<AMAServiceBookPriceServiceRQ.Product> getAdditionalBaggageProductList(List<BaggageDetails> baggageDetailsList, int[] tidCount) {
+
+        List<AMAServiceBookPriceServiceRQ.Product> productList = new ArrayList<>();
+
+
+        for (BaggageDetails baggageDetails : baggageDetailsList) {
+
+            String customerRefId = baggageDetails.getAmadeusPaxRef();
+
+            List<String> segmentRefIdList = baggageDetails.getSegmentTattooList();
+
+            String baggageCode = baggageDetails.getCode();
+            String bkm = baggageDetails.getBkm();
+            String rfic = baggageDetails.getRfic();
+            String rfisc = baggageDetails.getRfisc();
+            String airlineCode = baggageDetails.getCarrierCode();
+
+            AMAServiceBookPriceServiceRQ.Product product = new AMAServiceBookPriceServiceRQ.Product();
+
+            AMAServiceBookPriceServiceRQ.Product.Service service = new AMAServiceBookPriceServiceRQ.Product.Service();
+            //Service Request Id
+            service.setTID(Integer.toString(tidCount[0]));
+
+            //Amadeus pax ref tattoo
+            service.getCustomerRefIDs().add(customerRefId);
+
+            //Amadeus Segment ref tattoo
+            service.getSegmentRefIDs().addAll(segmentRefIdList);
+
+            //Service Identifiers set here
+            AMAServiceBookPriceServiceRQ.Product.Service.Identifier identifier = new AMAServiceBookPriceServiceRQ.Product.Service.Identifier();
+            identifier.setCode(baggageCode);
+            identifier.setRFIC(rfic);
+            identifier.setRFISC(rfisc);
+            identifier.setBookingMethod(new BigInteger(bkm));
+
+            //The below might be used when MIF = Y
+//                identifier.setCode();
+
+            service.setIdentifier(identifier);
+
+            ProviderType serviceProvider = new ProviderType();
+            serviceProvider.setCode(airlineCode);
+            service.setServiceProvider(serviceProvider);
+
+            product.setService(service);
+            productList.add(product);
+
+            tidCount[0]++;
+        }
+        return productList;
+    }
+
+    //Creates Request Body for Meal confirmation
+    private static List<AMAServiceBookPriceServiceRQ.Product> getAdditionalMealProductList(List<MealDetails> mealDetailsList, int[] tidCount) {
+
+        List<AMAServiceBookPriceServiceRQ.Product> productList = new ArrayList<>();
+
+        for (MealDetails mealDetails : mealDetailsList) {
+
+            String customerRefId = mealDetails.getAmadeusPaxRef();
+            String segmentRefIdList = mealDetails.getSegmentTattoo();
+
+            String mealCode = mealDetails.getMealCode();
+            String bkm = mealDetails.getBkm();
+            String rfic = mealDetails.getRfic();
+            String rfisc = mealDetails.getRfisc();
+            String airlineCode = mealDetails.getCarrierCode();
+
+            AMAServiceBookPriceServiceRQ.Product product = new AMAServiceBookPriceServiceRQ.Product();
+
+            AMAServiceBookPriceServiceRQ.Product.Service service = new AMAServiceBookPriceServiceRQ.Product.Service();
+            //Service Request Id
+            service.setTID(Integer.toString(tidCount[0]));
+
+            //Amadeus pax ref tattoo
+            service.getCustomerRefIDs().add(customerRefId);
+
+            //Amadeus Segment ref tattoo
+            service.getSegmentRefIDs().add(segmentRefIdList);
+
+            //Service Identifiers set here
+            AMAServiceBookPriceServiceRQ.Product.Service.Identifier identifier = new AMAServiceBookPriceServiceRQ.Product.Service.Identifier();
+            identifier.setCode(mealCode);
+            identifier.setRFIC(rfic);
+            identifier.setRFISC(rfisc);
+            identifier.setBookingMethod(new BigInteger(bkm));
+
+            service.setIdentifier(identifier);
+
+            ProviderType serviceProvider = new ProviderType();
+            serviceProvider.setCode(airlineCode);
+            service.setServiceProvider(serviceProvider);
+
+            product.setService(service);
+            productList.add(product);
+
+            tidCount[0]++;
+        }
+        return productList;
     }
 
 }

@@ -1,6 +1,7 @@
 package com.compassites.model;
 
 import com.compassites.model.traveller.Traveller;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dto.reissue.AmadeusPaxRefAndTicket;
 import models.CartAirSegmentDTO;
 
@@ -10,6 +11,7 @@ import java.util.List;
 /**
  * Created by Yaseen on 04-12-2014.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IssuanceRequest implements Serializable{
 
     private int adultCount;
@@ -17,9 +19,9 @@ public class IssuanceRequest implements Serializable{
     private int childCount;
 
     private int infantCount;
-    
+
     private String gdsPNR;
-    
+
     private String provider;
 
     private boolean isSeamen;
@@ -48,7 +50,9 @@ public class IssuanceRequest implements Serializable{
 
     private String reGdsPNR;
 
-    private List<BaggageDetails> baggageDetails;
+    private List<BaggageDetails> baggageDetailsList;
+
+    private List<MealDetails> mealDetailsList;
 
     private List<Traveller> bookingTravellerList;
 
@@ -63,6 +67,25 @@ public class IssuanceRequest implements Serializable{
     private boolean isSplitPnr;
 
     private String ticketingOfficeId;
+
+
+    private String expirationDate;
+    private boolean isSplitTicket;
+    public boolean isSplitTicket() {
+        return isSplitTicket;
+    }
+
+    public void setSplitTicket(boolean splitTicket) {
+        isSplitTicket = splitTicket;
+    }
+
+    public String getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
+    }
 
     public List<AmadeusPaxRefAndTicket> getAmadeusPaxRefAndTicketList() {
         return amadeusPaxRefAndTicketList;
@@ -176,14 +199,14 @@ public class IssuanceRequest implements Serializable{
     }
 
     public String getProvider() {
-		return provider;
-	}
+        return provider;
+    }
 
-	public void setProvider(String provider) {
-		this.provider = provider;
-	}
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
 
-	public List<Traveller> getTravellerList() {
+    public List<Traveller> getTravellerList() {
         return travellerList;
     }
 
@@ -217,10 +240,10 @@ public class IssuanceRequest implements Serializable{
 
     public String getJocPNR() {
         return jocPNR;
-   }
+    }
 
     public void setJocPNR(String jocPNR) {
-      this.jocPNR = jocPNR;
+        this.jocPNR = jocPNR;
     }
 
     public List<Traveller> getBookingTravellerList() {
@@ -239,12 +262,12 @@ public class IssuanceRequest implements Serializable{
         this.ctSegmentDtoList = ctSegmentDtoList;
     }
 
-    public List<BaggageDetails> getBaggageDetails() {
-        return baggageDetails;
+    public List<BaggageDetails> getBaggageDetailsList() {
+        return baggageDetailsList;
     }
 
-    public void setBaggageDetails(List<BaggageDetails> baggageDetails) {
-        this.baggageDetails = baggageDetails;
+    public void setBaggageDetailsList(List<BaggageDetails> baggageDetailsList) {
+        this.baggageDetailsList = baggageDetailsList;
     }
 
     public List<String> getTicketsList() {
@@ -270,4 +293,13 @@ public class IssuanceRequest implements Serializable{
     public void setTicketingOfficeId(String ticketingOfficeId) {
         this.ticketingOfficeId = ticketingOfficeId;
     }
+
+    public List<MealDetails> getMealDetailsList() {
+        return mealDetailsList;
+    }
+
+    public void setMealDetailsList(List<MealDetails> mealDetailsList) {
+        this.mealDetailsList = mealDetailsList;
+    }
+
 }

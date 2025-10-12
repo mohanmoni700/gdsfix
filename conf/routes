@@ -34,12 +34,14 @@ POST    /getMessagesFromQueue                      @controllers.Application.getM
 GET     /                                          @controllers.Application.home()
 POST 	/ticketCancelDocuments                     @controllers.Application.ticketCancelDocuments()
 POST 	/refundSplitTicket                         @controllers.Application.refundSplitTicket()
-POST    /splitTicket                               @controllers.SplitTicketController.findPossibleRoutes
 POST	/findroute                              @controllers.Application.getRoutes
 POST    /checkSplitTicketFareAvailability                         @controllers.Application.checkSplitTicketFareAvailability
 POST    /generateSplitTicketPNR                                   @controllers.Application.generateSplitTicketWithSinglePNR
 POST    /checkFareChangeAndAvailabilityForSplitTicket             @controllers.Application.checkFareChangeAndAvailabilityForSplitTicket
 POST    /cancelTimeLimitReachedPNR                         @controllers.Application.cancelTimeLimitReachedPNR
+POST    /addElementsToPnrPostBookingSuccess                @controllers.Application.addElementsToPnrPostBookingSuccess()
+
+
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file                              controllers.Assets.at(path="/public", file)
 
@@ -69,7 +71,18 @@ POST  /processPartialRefund         @controllers.Application.processPartialRefun
 POST  /fetchTmxExtraServices              @controllers.Application.fetchTmxExtraServices()
 POST /showAdditionalBaggageInfoStandalone  @controllers.Application.addAdditionalBaggageRequestStandalone()
 POST /showMealsInfoStandalone             @controllers.Application.addMealsRequestStandalone()
+POST /getAvailableAncillaryServices            @controllers.Application.getAvailableAncillaryServices()
+POST /confirmAncillaryPayment             @controllers.Application.getAncillaryBaggagePaymentConfirmation()
 
 #Report
 POST    /openTicketReport   @controllers.Application.openTicketReport()
 
+#indigo
+POST    /saveBooking   @controllers.Application.saveIndigoBooking()
+
+
+#Exchange Rates
+POST    /getAmadeusExchangeRates   @controllers.Application.getAmadeusExchangeRates()
+
+#AirlineTimeLimit
+POST    /getAirlineWiseTimeLimit   @controllers.Application.getAirlineWiseTimeLimit()

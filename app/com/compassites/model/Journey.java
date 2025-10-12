@@ -20,10 +20,15 @@ public class Journey implements Serializable
 {
 
     private Duration travelTime;
+
     private String travelTimeStr;
+
     private Long travelTimeMillis;
+
     private String airlinesStrForFilter;
+
     private Integer noOfStops;
+
     private String segmentKey;
 
     private String fromLocation;
@@ -76,6 +81,34 @@ public class Journey implements Serializable
     private String fareDescription;
 
     private List<String> lastTktDate;
+    private boolean seamen;
+
+    private String journeySellKey;
+
+    public String getJourneySellKey() {
+        return journeySellKey;
+    }
+
+    public void setJourneySellKey(String journeySellKey) {
+        this.journeySellKey = journeySellKey;
+    }
+    private String fareSellKey;
+
+    public String getFareSellKey() {
+        return fareSellKey;
+    }
+
+    public void setFareSellKey(String fareSellKey) {
+        this.fareSellKey = fareSellKey;
+    }
+
+    public boolean isSeamen() {
+        return seamen;
+    }
+
+    public void setSeamen(boolean seamen) {
+        this.seamen = seamen;
+    }
 
     public List<String> getLastTktDate() {
         return lastTktDate;

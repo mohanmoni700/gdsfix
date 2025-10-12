@@ -1,9 +1,7 @@
 package com.compassites.model;
 
 import com.compassites.model.amadeus.AmadeusPaxInformation;
-import dto.FareCheckRulesResponse;
-import dto.FreeMealsDetails;
-import dto.FreeSeatDetails;
+import dto.*;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -37,7 +35,7 @@ public class PNRResponse implements Serializable  {
     private BigDecimal changedBasePrice;
 
     private String airlinePNR;
-    
+
     private PricingInformation pricingInfo;
 
     private boolean holdTime;
@@ -54,7 +52,31 @@ public class PNRResponse implements Serializable  {
 
     private Map<String, String> segmentBaggageMap;
 
+    private Map<String, AmadeusSegmentRefDTO> segmentRefMap;
+
     private Map<String,Double> carbonDioxide;
+
+    private String expirationDate;
+
+    private List<AirlineSpecificQueueAndTimeLimitDetails> airlineSpecificQueueAndTimeLimitDetailsList;
+
+    private List<IndigoPaxNumber> indigoPaxNumbers;
+
+    public List<IndigoPaxNumber> getIndigoPaxNumbers() {
+        return indigoPaxNumbers;
+    }
+
+    public void setIndigoPaxNumbers(List<IndigoPaxNumber> indigoPaxNumbers) {
+        this.indigoPaxNumbers = indigoPaxNumbers;
+    }
+
+    public String getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
+    }
 
     public Map<String, Double> getCarbonDioxide() {
         return carbonDioxide;
@@ -119,6 +141,20 @@ public class PNRResponse implements Serializable  {
     private Map<String,FareCheckRulesResponse> fareCheckRulesResponseMap;
 
     private String status;
+
+    private boolean nonOfficeId;
+
+    private boolean isTicketPresent;
+
+    private String childPnr;
+
+    public String getChildPnr() {
+        return childPnr;
+    }
+
+    public void setChildPnr(String childPnr) {
+        this.childPnr = childPnr;
+    }
 
     public Map<String, String> getPnrMap() {
         return pnrMap;
@@ -342,30 +378,30 @@ public class PNRResponse implements Serializable  {
     public void setCappingLimitReached(boolean isCappingLimitReached) {
         this.isCappingLimitReached = isCappingLimitReached;
     }
-	
-	public BigDecimal getChangedBasePrice() {
+
+    public BigDecimal getChangedBasePrice() {
         return changedBasePrice;
     }
 
-	public void setChangedBasePrice(BigDecimal changedBasePrice) {
+    public void setChangedBasePrice(BigDecimal changedBasePrice) {
         this.changedBasePrice = changedBasePrice;
     }
 
-	public String getAirlinePNR() {
-		return airlinePNR;
-	}
+    public String getAirlinePNR() {
+        return airlinePNR;
+    }
 
-	public void setAirlinePNR(String airlinePNR) {
-		this.airlinePNR = airlinePNR;
-	}
+    public void setAirlinePNR(String airlinePNR) {
+        this.airlinePNR = airlinePNR;
+    }
 
-	public PricingInformation getPricingInfo() {
-		return pricingInfo;
-	}
+    public PricingInformation getPricingInfo() {
+        return pricingInfo;
+    }
 
-	public void setPricingInfo(PricingInformation pricingInfo) {
-		this.pricingInfo = pricingInfo;
-	}
+    public void setPricingInfo(PricingInformation pricingInfo) {
+        this.pricingInfo = pricingInfo;
+    }
 
     public boolean isHoldTime() {
         return holdTime;
@@ -413,8 +449,8 @@ public class PNRResponse implements Serializable  {
 
     public void setAirlinePNRError(boolean airlinePNRError) {
         this.airlinePNRError = airlinePNRError;
-	}
-	
+    }
+
     public void setBookedStatus(String bookedStatus){
         this.bookedStatus = bookedStatus;
     }
@@ -479,5 +515,36 @@ public class PNRResponse implements Serializable  {
         this.freeSeatList = freeSeatList;
     }
 
-}
 
+    public Map<String, AmadeusSegmentRefDTO> getSegmentRefMap() {
+        return segmentRefMap;
+    }
+
+    public void setSegmentRefMap(Map<String, AmadeusSegmentRefDTO> segmentRefMap) {
+        this.segmentRefMap = segmentRefMap;
+    }
+
+    public List<AirlineSpecificQueueAndTimeLimitDetails> getAirlineSpecificQueueAndTimeLimitDetailsList() {
+        return airlineSpecificQueueAndTimeLimitDetailsList;
+    }
+
+    public void setAirlineSpecificQueueAndTimeLimitDetailsList(List<AirlineSpecificQueueAndTimeLimitDetails> airlineSpecificQueueAndTimeLimitDetailsList) {
+        this.airlineSpecificQueueAndTimeLimitDetailsList = airlineSpecificQueueAndTimeLimitDetailsList;
+    }
+
+    public boolean isNonOfficeId() {
+        return nonOfficeId;
+    }
+
+    public void setNonOfficeId(boolean nonOfficeId) {
+        this.nonOfficeId = nonOfficeId;
+    }
+
+    public boolean isTicketPresent() {
+        return isTicketPresent;
+    }
+
+    public void setTicketPresent(boolean ticketPresent) {
+        isTicketPresent = ticketPresent;
+    }
+}

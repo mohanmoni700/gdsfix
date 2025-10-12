@@ -1,7 +1,9 @@
 package com.compassites.model;
 
 import com.compassites.model.traveller.Traveller;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dto.FareCheckRulesResponse;
+import dto.IndigoPaxNumber;
 import org.hibernate.mapping.Bag;
 
 import java.io.Serializable;
@@ -13,6 +15,7 @@ import java.util.Map;
 /**
  * Created by user on 05-12-2014.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IssuanceResponse implements Serializable{
 
     private boolean isCappingLimitReached;
@@ -50,6 +53,35 @@ public class IssuanceResponse implements Serializable{
     private BigDecimal newLowerPrice;
 
     private boolean isIssued;
+
+    private String expirationDate;
+    private Map<String,String> splitTicketNumberMap;
+
+    public Map<String, String> getSplitTicketNumberMap() {
+        return splitTicketNumberMap;
+    }
+
+    public void setSplitTicketNumberMap(Map<String, String> splitTicketNumberMap) {
+        this.splitTicketNumberMap = splitTicketNumberMap;
+    }
+
+    private List<IndigoPaxNumber> indigoPaxNumbers;
+
+    public List<IndigoPaxNumber> getIndigoPaxNumbers() {
+        return indigoPaxNumbers;
+    }
+
+    public void setIndigoPaxNumbers(List<IndigoPaxNumber> indigoPaxNumbers) {
+        this.indigoPaxNumbers = indigoPaxNumbers;
+    }
+
+    public String getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
+    }
 
     private Map<String,FareCheckRulesResponse> fareCheckRulesResponseMap;
 

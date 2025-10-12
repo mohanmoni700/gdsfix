@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import utils.DateUtility;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -40,12 +41,48 @@ public class TravellerMasterInfo {
     private String sessionIdRef;
 
     private Date validTillDate;
-    
+
     private String journeyType;
 
     private boolean isChangedPriceHigh;
 
     private String accountName;
+    private String expirationDate;
+    private String provider;
+    private BigDecimal refundAmount;
+    private boolean isRefund;
+
+    public BigDecimal getRefundAmount() {
+        return refundAmount;
+    }
+
+    public void setRefundAmount(BigDecimal refundAmount) {
+        this.refundAmount = refundAmount;
+    }
+
+    public boolean isRefund() {
+        return isRefund;
+    }
+
+    public void setRefund(boolean refund) {
+        isRefund = refund;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public String getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(String expirationDate) {
+        this.expirationDate = expirationDate;
+    }
 
     public String getAccountName() {
         return accountName;
@@ -105,6 +142,33 @@ public class TravellerMasterInfo {
 
     private boolean isAutoReIssue;
     private boolean isAutoReFund;
+    private int adtultCount;
+    private int childCount;
+    private int infantCount;
+
+    public int getAdtultCount() {
+        return adtultCount;
+    }
+
+    public void setAdtultCount(int adtultCount) {
+        this.adtultCount = adtultCount;
+    }
+
+    public int getChildCount() {
+        return childCount;
+    }
+
+    public void setChildCount(int childCount) {
+        this.childCount = childCount;
+    }
+
+    public int getInfantCount() {
+        return infantCount;
+    }
+
+    public void setInfantCount(int infantCount) {
+        this.infantCount = infantCount;
+    }
 
     public boolean isAutoReIssue() {
         return isAutoReIssue;
@@ -292,14 +356,14 @@ public class TravellerMasterInfo {
         this.validTillDate = validTillDate;
     }
 
-    
-    public String getJourneyType() {
-		return journeyType;
-	}
 
-	public void setJourneyType(String journeyType) {
-		this.journeyType = journeyType;
-	}
+    public String getJourneyType() {
+        return journeyType;
+    }
+
+    public void setJourneyType(String journeyType) {
+        this.journeyType = journeyType;
+    }
 
     public Map<String, String> getSegmentBaggageMap() {
         return segmentBaggageMap;

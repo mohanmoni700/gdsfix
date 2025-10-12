@@ -2,36 +2,100 @@ package com.compassites.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.List;
+import java.util.Date;
+import javax.xml.datatype.XMLGregorianCalendar;
+
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BaggageDetails {
 
     private Long contactMasterId;
+
     private String segmentNumber;
+
     private String baggageId;
+
     private String code;
+
     private String destination;
+
     private String baggageDescription;
+
     private String origin;
+
     private Long price;
+
     private Long basePrice;
+
     private Long tax;
+
     private String weight;
+
     private String piece;
+
     private String rfic;
+
     private String rfisc;
+
     private boolean isRefundable;
+
     private boolean isMIF;
+
     private String bkm;
+
     private String serviceId;
+
     private String carrierCode;
+
     private boolean isFMT;
+
     private boolean isWVAL;
+
     private boolean isPVAL;
+
     private boolean isFTXT;
+
     private Long ticketId;
+
     private String tmxTicketNumber;
+
     private Boolean returnDetails;
+
+    private String amadeusPaxRef;
+
+    private XMLGregorianCalendar departureDate;
+
+    public XMLGregorianCalendar getDepartureDate() {
+        return departureDate;
+    }
+
+    public void setDepartureDate(XMLGregorianCalendar departureDate) {
+        this.departureDate = departureDate;
+    }
+
+    public String getFlightNumber() {
+        return flightNumber;
+    }
+
+    public void setFlightNumber(String flightNumber) {
+        this.flightNumber = flightNumber;
+    }
+
+    public List<AvailableSSRServiceCharges> getIndigoSSRCharges() {
+        return indigoSSRCharges;
+    }
+
+    public void setIndigoSSRCharges(List<AvailableSSRServiceCharges> indigoSSRCharges) {
+        this.indigoSSRCharges = indigoSSRCharges;
+    }
+
+    private String flightNumber;
+    private List<AvailableSSRServiceCharges> indigoSSRCharges;
+
+
+
+    private List<String> segmentTattooList;
 
     public String getPiece() {
         return piece;
@@ -254,5 +318,21 @@ public class BaggageDetails {
         this.tax = tax;
     }
 
-}
+    public String getAmadeusPaxRef() {
+        return amadeusPaxRef;
+    }
 
+    public void setAmadeusPaxRef(String amadeusPaxRef) {
+        this.amadeusPaxRef = amadeusPaxRef;
+    }
+
+    public List<String> getSegmentTattooList() {
+        return segmentTattooList;
+    }
+
+    public void setSegmentTattooList(List<String> segmentTattooList) {
+        this.segmentTattooList = segmentTattooList;
+    }
+
+
+}

@@ -1,20 +1,24 @@
 package services;
 
 import com.compassites.GDSWrapper.mystifly.Mystifly;
+import com.compassites.constants.IndigoConstants;
 import com.compassites.constants.TraveloMatrixConstants;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import dto.AddElementsToPnrDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import services.indigo.IndigoFlightService;
 import utils.PNRRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by user on 07-08-2014.
@@ -42,6 +46,8 @@ public class BookingServiceWrapper {
 
 	@Autowired
 	private SplitTicketBookingService splitTicketBookingService;
+	@Autowired
+	private IndigoFlightService indigoFlightService;
 
 	private LowestFareService amadeusLowestFareService;
 
@@ -59,7 +65,7 @@ public class BookingServiceWrapper {
 		return amadeusLowestFareService;
 	}
 
-    @Autowired
+	@Autowired
 	public void setAmadeusLowestFareService(LowestFareService amadeusLowestFareService) {
 		this.amadeusLowestFareService = amadeusLowestFareService;
 	}
@@ -82,6 +88,8 @@ public class BookingServiceWrapper {
 			}
 		} else if (TraveloMatrixConstants.provider.equalsIgnoreCase(provider)) {
 			pnrResponse =	traveloMatrixBookingService.generatePNR(travellerMasterInfo);
+		} else if (IndigoConstants.provider.equalsIgnoreCase(provider)) {
+			pnrResponse = indigoFlightService.generatePNR(travellerMasterInfo);
 		}
 		return pnrResponse;
 	}
@@ -166,6 +174,8 @@ public class BookingServiceWrapper {
 					.checkFareChangeAndAvailability(travellerMasterInfo);
 		}else if (TraveloMatrixConstants.provider.equalsIgnoreCase(provider)){
 			pnrResponse =traveloMatrixBookingService.checkFareChangeAndAvailability(travellerMasterInfo);
+		} else if(IndigoConstants.provider.equalsIgnoreCase(provider)) {
+			pnrResponse = indigoFlightService.checkFareChangeAndAvailability(travellerMasterInfo);
 		}
 
 		return pnrResponse;
@@ -188,24 +198,24 @@ public class BookingServiceWrapper {
 	}
 
 	public TravellerMasterInfo getPnrDetails(IssuanceRequest issuanceRequest, String gdsPNR, String provider){
-    	TravellerMasterInfo masterInfo = null;
-    	if("Travelport".equalsIgnoreCase(provider)){
-    		masterInfo = travelPortBookingService.allPNRDetails(issuanceRequest, gdsPNR);
-    	} else if("Amadeus".equalsIgnoreCase(provider)){
-    		masterInfo = amadeusBookingService.allPNRDetails(issuanceRequest, gdsPNR);
-    	} else if(Mystifly.PROVIDER.equalsIgnoreCase(provider)){
-    		masterInfo = mystiflyBookingService.allPNRDetails(gdsPNR);
-    	}
-    	return masterInfo;
-    }
-	
+		TravellerMasterInfo masterInfo = null;
+		if("Travelport".equalsIgnoreCase(provider)){
+			masterInfo = travelPortBookingService.allPNRDetails(issuanceRequest, gdsPNR);
+		} else if("Amadeus".equalsIgnoreCase(provider)){
+			masterInfo = amadeusBookingService.allPNRDetails(issuanceRequest, gdsPNR);
+		} else if(Mystifly.PROVIDER.equalsIgnoreCase(provider)){
+			masterInfo = mystiflyBookingService.allPNRDetails(gdsPNR);
+		}
+		return masterInfo;
+	}
+
 	public JsonNode getBookingDetails(String provider, String gdsPNR) {
 		JsonNode json = null;
 		if("Travelport".equalsIgnoreCase(provider) || "Galileo".equalsIgnoreCase(provider)){
 			json = travelPortBookingService.getBookingDetails(gdsPNR);
-    	} else if("Amadeus".equalsIgnoreCase(provider)){
-    		json = amadeusBookingService.getBookingDetails(gdsPNR);
-    	}else if ("Mystifly".equalsIgnoreCase(provider)){
+		} else if("Amadeus".equalsIgnoreCase(provider)){
+			json = amadeusBookingService.getBookingDetails(gdsPNR);
+		}else if ("Mystifly".equalsIgnoreCase(provider)){
 			json =  mystiflyBookingService.getBookingDetails(gdsPNR);
 		}
 		return json;
@@ -214,63 +224,134 @@ public class BookingServiceWrapper {
 		JsonNode json = null;
 		if("Travelport".equalsIgnoreCase(provider) || "Galileo".equalsIgnoreCase(provider)){
 			json = travelPortBookingService.getBookingDetails(gdsPNR);
-    	} else if("Amadeus".equalsIgnoreCase(provider)){
-    		json = amadeusBookingService.getBookingDetailsByOfficeId(gdsPNR, officeId);
-    	}else if ("Mystifly".equalsIgnoreCase(provider)){
+		} else if("Amadeus".equalsIgnoreCase(provider)){
+			json = amadeusBookingService.getBookingDetailsByOfficeId(gdsPNR, officeId);
+		}else if ("Mystifly".equalsIgnoreCase(provider)){
 			json =  mystiflyBookingService.getBookingDetails(gdsPNR);
 		}
 		return json;
 	}
-	
+
 	public LowFareResponse getLowestFare(IssuanceRequest issuanceRequest) {
 		LowFareResponse lowFareRS = null;
 		if("Amadeus".equalsIgnoreCase(issuanceRequest.getProvider())) {
 			lowFareRS = amadeusLowestFareService.getLowestFare(issuanceRequest);
-    	} else if("Travelport".equalsIgnoreCase(issuanceRequest.getProvider())) {
-            lowFareRS = travelPortBookingService.getLowestFare(issuanceRequest.getGdsPNR(), issuanceRequest.getProvider(), issuanceRequest.isSeamen());
-    	} else if(Mystifly.PROVIDER.equalsIgnoreCase(issuanceRequest.getProvider())) {
-    		// Not implemented.
-    	}
+		} else if("Travelport".equalsIgnoreCase(issuanceRequest.getProvider())) {
+			lowFareRS = travelPortBookingService.getLowestFare(issuanceRequest.getGdsPNR(), issuanceRequest.getProvider(), issuanceRequest.isSeamen());
+		} else if(Mystifly.PROVIDER.equalsIgnoreCase(issuanceRequest.getProvider())) {
+			// Not implemented.
+		}
 		return lowFareRS;
 	}
 
-    public HashMap getBookingDetailsForPNR(JsonNode json) {
-        PNRRequest[] PNRRequestList = null;
-        HashMap<String, Object> jsonMap = new HashMap<>();
-        ObjectMapper objectMapper = new ObjectMapper();
-        TypeFactory typeFactory = objectMapper.getTypeFactory();
-        try {
-           PNRRequestList =
-                    objectMapper.readValue(json.toString(), PNRRequest[].class);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+	public HashMap getBookingDetailsForPNR(JsonNode json) {
+		PNRRequest[] PNRRequestList = null;
+		HashMap<String, Object> jsonMap = new HashMap<>();
+		ObjectMapper objectMapper = new ObjectMapper();
+		TypeFactory typeFactory = objectMapper.getTypeFactory();
+		try {
+			PNRRequestList =
+					objectMapper.readValue(json.toString(), PNRRequest[].class);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-        for(PNRRequest pnrRequest: PNRRequestList){
-            if("Travelport".equalsIgnoreCase(pnrRequest.getProvider()) || "Galileo".equalsIgnoreCase(pnrRequest.getProvider())){
-                jsonMap.put(pnrRequest.getGdsPnr(), travelPortBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
-            } else if("Amadeus".equalsIgnoreCase(pnrRequest.getProvider())){
-                jsonMap.put(pnrRequest.getGdsPnr(), amadeusBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
-            } else if("Mystifly".equalsIgnoreCase(pnrRequest.getProvider())){
-                jsonMap.put(pnrRequest.getGdsPnr(), mystiflyBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
-            }
-        }
+		for(PNRRequest pnrRequest: PNRRequestList){
+			if("Travelport".equalsIgnoreCase(pnrRequest.getProvider()) || "Galileo".equalsIgnoreCase(pnrRequest.getProvider())){
+				jsonMap.put(pnrRequest.getGdsPnr(), travelPortBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+			} else if("Amadeus".equalsIgnoreCase(pnrRequest.getProvider())){
+				jsonMap.put(pnrRequest.getGdsPnr(), amadeusBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+			} else if("Mystifly".equalsIgnoreCase(pnrRequest.getProvider())){
+				jsonMap.put(pnrRequest.getGdsPnr(), mystiflyBookingService.getBookingDetails(pnrRequest.getGdsPnr()));
+			}
+		}
 //        System.out.println(" HashMap ==============>>>>>>\n"+Json.toJson(jsonMap));
-        return jsonMap;
-    }
+		return jsonMap;
+	}
 
 	public IssuanceResponse priceBookedPNR(IssuanceRequest issuanceRequest){
 
 		IssuanceResponse issuanceResponse = null;
+		if(issuanceRequest.getFlightItinerary().isSplitTicket() && isIndigoFlight(issuanceRequest)) {
+			issuanceResponse = splitTicketPriceBooking(issuanceRequest);
+			return issuanceResponse;
+		}
 		if(PROVIDERS.TRAVELPORT.toString().equalsIgnoreCase(issuanceRequest.getProvider()) || "Galileo".equalsIgnoreCase(issuanceRequest.getProvider())){
 			issuanceResponse = travelportIssuanceService.priceBookedPNR(issuanceRequest);
 		}else if(PROVIDERS.AMADEUS.toString().equalsIgnoreCase(issuanceRequest.getProvider())){
 			issuanceResponse = amadeusIssuanceService.priceBookedPNR(issuanceRequest);
+		} else if (IndigoConstants.provider.equalsIgnoreCase(issuanceRequest.getProvider())) {
+			issuanceResponse = indigoFlightService.priceBookedPNR(issuanceRequest);
 		}
 
 		return issuanceResponse;
 	}
 
+	private boolean isIndigoFlight(IssuanceRequest issuanceRequest) {
+		List<Integer> journeyIndex = new ArrayList<>();
+		int index = 0;
+		boolean isIndigoFlight = false;
+		int amadeusIndex = 0;
+		int indigoIndex = 0;
+		for(Journey journey: issuanceRequest.getFlightItinerary().getJourneyList()) {
+			if(journey.getProvider().equalsIgnoreCase("Indigo")) {
+				journeyIndex.add(index);
+				indigoIndex++;
+			}
+			if(journey.getProvider().equalsIgnoreCase("Amadeus")) {
+				amadeusIndex++;
+			}
+			index++;
+		}
+		if (indigoIndex == 1 && amadeusIndex == 1) {
+			isIndigoFlight = true;
+		}
+		System.out.println("isIndigoFlight "+isIndigoFlight);
+		return isIndigoFlight;
+	}
+
+	private IssuanceResponse splitTicketPriceBooking(IssuanceRequest issuanceRequest){
+		System.out.println("Indigo and amadeus");
+		IssuanceResponse issuanceResponse = amadeusIssuanceService.splitTicketPriceBooking(issuanceRequest);
+		return issuanceResponse;
+	}
+
+
+	public IssuanceResponse issueIndigoTicket(IssuanceRequest issuanceRequest) {
+		IssuanceResponse issuanceResponse = null;
+		if (IndigoConstants.provider.equalsIgnoreCase(issuanceRequest.getProvider())) {
+			issuanceResponse = indigoFlightService.issueTicket(issuanceRequest);
+		}
+		return issuanceResponse;
+	}
+
+	public boolean addJocoPnrToGdsPnr(AddElementsToPnrDTO addElementsToPnrDTO) {
+
+		String provider = addElementsToPnrDTO.getProvider();
+
+		if (provider.equalsIgnoreCase("Amadeus")) {
+			return amadeusBookingService.addJocoPnrToGdsPnr(addElementsToPnrDTO);
+		} else {
+			return false;
+		}
+	}
+
+
+	public Map<String , PNRResponse>  airlineWiseTimeLimit(List<String> gdsPnrList) {
+		try {
+			Map<String, PNRResponse> pnrResponseMap = new HashMap<>();
+			if (gdsPnrList != null && gdsPnrList.size() > 0) {
+				for (String gdsPnr : gdsPnrList) {
+					PNRResponse pnrResponse = null;
+					pnrResponse = amadeusBookingService.fetchAirlineWiseTimeLimitDetails(gdsPnr);
+					pnrResponseMap.put(gdsPnr, pnrResponse);
+				}
+			}
+			return pnrResponseMap;
+		} catch (RuntimeException e) {
+			throw new RuntimeException(e);
+		}
+	}
 	/*public IssuanceResponse readTripDetails(IssuanceRequest issuanceRequest) {
 		IssuanceResponse issuanceResponse = null;
 		issuanceResponse = mystiflyBookingService.readTripDetails(issuanceRequest);
