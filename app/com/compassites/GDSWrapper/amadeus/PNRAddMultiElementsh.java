@@ -1,28 +1,30 @@
 package com.compassites.GDSWrapper.amadeus;
 
 import com.amadeus.xml.pnradd_14_1_1a.*;
+import com.amadeus.xml.pnradd_14_1_1a.PNRAddMultiElements.DataElementsMaster.DataElementsIndiv;
 import com.amadeus.xml.pnrxcl_14_1_1a.CancelPNRElementType;
 import com.amadeus.xml.pnrxcl_14_1_1a.PNRCancel;
 import com.amadeus.xml.pnrxcl_14_1_1a.ReservationControlInformationType;
-import com.amadeus.xml.pnradd_14_1_1a.PNRAddMultiElements.DataElementsMaster.DataElementsIndiv;
-
 import com.compassites.constants.AmadeusConstants;
 import com.compassites.model.*;
 import com.compassites.model.traveller.*;
+import dto.queueManagement.OutwardMessageDTO;
 import models.NationalityDao;
-
-import org.joda.time.*;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
-
+import play.Play;
 import utils.DateUtility;
 import utils.StringUtility;
 
 import java.math.BigInteger;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Period;
 import java.util.*;
 
 
@@ -1587,7 +1589,46 @@ public class PNRAddMultiElementsh {
 
             rcEntryElementList.add(vesselNameData);
 
+            //Passport About to Expire warning set here
 
+            List<Journey> journeyList = travellerMasterInfo.getItinerary().getJourneyList();
+            Journey journey = journeyList.get(journeyList.size() - 1);
+            Date lastDepartureTime = journey.getAirSegmentList().stream().max(Comparator.comparing(AirSegmentInformation::getDepartureDate)).map(AirSegmentInformation::getDepartureDate).orElse(null);
+            if (lastDepartureTime != null) {
+                List<Traveller> travellersList=travellerMasterInfo.getTravellersList();
+                int paxRefCount = 1;
+                for (Traveller traveller : travellersList) {
+                    if (traveller.getPassportDetails() != null && traveller.getPassportDetails().getDateOfExpiry() != null) {
+                        Period period = DateUtility.getDifferenceBetweenTime(lastDepartureTime, traveller.getPassportDetails().getDateOfExpiry());
+                        if(period.getYears()>0){
+                            period=period.plusMonths(period.getYears()* 12L);
+                        }
+                        Integer maxExpiryTimeOfPassportInMonths = Play.application().configuration().getInt("rc.maxExpiryTimeOfPassportInMonths");
+                        if (period.getMonths() < maxExpiryTimeOfPassportInMonths || (period.getMonths() == maxExpiryTimeOfPassportInMonths && period.getDays() <= 0)) {
+                            DataElementsIndiv passportExpiryData = new DataElementsIndiv();
+                            ElementManagementSegmentType passportExpiryWarningElement = new ElementManagementSegmentType();
+                            ReferencingDetailsType passportExpiryWarningReference = new ReferencingDetailsType();
+                            MiscellaneousRemarksType passportExpiryWarningRemarks = new MiscellaneousRemarksType();
+                            MiscellaneousRemarkType remarks6 = new MiscellaneousRemarkType();
+                            passportExpiryWarningElement.setSegmentName("RC");
+                            passportExpiryWarningReference.setQualifier("OT");
+                            passportExpiryWarningReference.setNumber("13");
+                            passportExpiryWarningElement.setReference(passportExpiryWarningReference);
+                            passportExpiryData.setElementManagementData(passportExpiryWarningElement);
+                            remarks6.setType("RC");
+                            DateFormat formatter = new SimpleDateFormat("ddMMMyy");
+                            String warningText = "JOCO GAVE WARNING | BOOKER CONTINUED BOOKING";
+                            String paxRef = "P/"+paxRefCount;
+                            remarks6.setFreetext(paxRef +" passport expiring on "+formatter.format(traveller.getPassportDetails().getDateOfExpiry())+" | " +warningText);
+                            passportExpiryWarningRemarks.setRemarks(remarks6);
+                            passportExpiryData.setMiscellaneousRemark(passportExpiryWarningRemarks);
+
+                            rcEntryElementList.add(passportExpiryData);
+                        }
+                    }
+                    paxRefCount ++;
+                }
+            }
         } catch (Exception e) {
             logger.debug("Error while setting RC Entry {} ", e.getMessage(), e);
         }
@@ -1626,5 +1667,171 @@ public class PNRAddMultiElementsh {
 
         return element;
     }
+
+    public static String getFullName(String firstName, String middleName, String lastName){
+        String fullName = "";
+        String fstName="";
+        String lstName="";
+        String midName="";
+        if(!"Mr".equalsIgnoreCase(middleName) && !"Ms".equalsIgnoreCase(middleName)
+                && !"Mrs".equalsIgnoreCase(middleName) && !"Miss".equalsIgnoreCase(middleName)
+                && !"Master".equalsIgnoreCase(middleName) && middleName !="") {
+            midName = " "+middleName+" ";
+        }
+        if(middleName == null){
+            midName="";
+        }
+        if(firstName != null) {
+            if (!firstName.equalsIgnoreCase("FNU")) {
+                fstName = firstName;
+            }
+        }
+
+        if(lastName != null) {
+            if (!lastName.equalsIgnoreCase("LNU")) {
+                lstName = lastName;
+            }
+        }
+        fullName = fstName+midName+lstName;
+        return fullName.trim();
+    }
+
+    public PNRAddMultiElements addOutwardMessagesToGdsPnr(List<OutwardMessageDTO> outwardMessageList) {
+        try {
+            PNRAddMultiElements element = new PNRAddMultiElements();
+            OptionalPNRActionsType pnrActions = new OptionalPNRActionsType();
+            pnrActions.getOptionCode().add(new BigInteger("0"));
+            element.setPnrActions(pnrActions);
+
+            // data elements
+            PNRAddMultiElements.DataElementsMaster dataElementsMaster = new PNRAddMultiElements.DataElementsMaster();
+            dataElementsMaster.setMarker1(new DummySegmentTypeI());
+            List<PNRAddMultiElements.DataElementsMaster.DataElementsIndiv> dataElementsList = new ArrayList<>();
+
+            if (outwardMessageList != null && !outwardMessageList.isEmpty()) {
+                for (OutwardMessageDTO outwardMessage : outwardMessageList) {
+
+                    if (outwardMessage == null || outwardMessage.getRemarkType() == null) {
+                        continue;
+                    }
+
+                    String remarkType = outwardMessage.getRemarkType().trim().toUpperCase();
+
+                    // Create new indiv and segment for each remark
+                    PNRAddMultiElements.DataElementsMaster.DataElementsIndiv indiv = new PNRAddMultiElements.DataElementsMaster.DataElementsIndiv();
+                    ElementManagementSegmentType elementManagementData = new ElementManagementSegmentType();
+                    indiv.setElementManagementData(elementManagementData);
+
+                    switch (remarkType) {
+
+                        case "RC":
+                        case "RM":
+                        case "RX": {
+                            elementManagementData.setSegmentName(remarkType);
+
+                            ReferencingDetailsType reference = new ReferencingDetailsType();
+                            reference.setQualifier("OT");
+                            reference.setNumber("13");
+                            elementManagementData.setReference(reference);
+
+                            MiscellaneousRemarksType miscRemarks = new MiscellaneousRemarksType();
+                            MiscellaneousRemarkType remark = new MiscellaneousRemarkType();
+                            remark.setType(remarkType);
+
+                            if (outwardMessage.getFreeText() != null && !outwardMessage.getFreeText().isEmpty()) {
+                                remark.setFreetext(outwardMessage.getFreeText().get(0));
+                            }
+
+
+                            miscRemarks.setRemarks(remark);
+                            indiv.setMiscellaneousRemark(miscRemarks);
+                            dataElementsList.add(indiv);
+                            break;
+                        }
+
+                        case "OSI": {
+                            elementManagementData.setSegmentName("OS");
+
+                            LongFreeTextType freeTextData = new LongFreeTextType();
+                            FreeTextQualificationType textDetail = new FreeTextQualificationType();
+                            textDetail.setSubjectQualifier("3");
+                            textDetail.setType("P27");
+
+                            String companyId = (outwardMessage.getCarrierCode() != null && !outwardMessage.getCarrierCode().isEmpty()) ? outwardMessage.getCarrierCode() : "YY";
+                            textDetail.setCompanyId(companyId);
+                            freeTextData.setFreetextDetail(textDetail);
+
+                            if (outwardMessage.getFreeText() != null && !outwardMessage.getFreeText().isEmpty()) {
+                                freeTextData.setLongFreetext(outwardMessage.getFreeText().get(0));
+                            }
+
+                            indiv.setFreetextData(freeTextData);
+                            dataElementsList.add(indiv);
+                            break;
+                        }
+
+                        case "SSR/SVCS": {
+                            elementManagementData.setSegmentName("SSR");
+
+                            ReferencingDetailsType reference = new ReferencingDetailsType();
+                            reference.setQualifier("OT");
+                            reference.setNumber("13");
+                            elementManagementData.setReference(reference);
+
+                            if (outwardMessage.getFreeText() != null && !outwardMessage.getFreeText().isEmpty()) {
+                                SpecialRequirementsDetailsTypeI serviceRequest = new SpecialRequirementsDetailsTypeI();
+                                SpecialRequirementsTypeDetailsTypeI ssr = new SpecialRequirementsTypeDetailsTypeI();
+
+                                if (outwardMessage.getCarrierCode() != null) {
+                                    ssr.setCompanyId(outwardMessage.getCarrierCode());
+                                }
+                                ssr.getFreetext().addAll(outwardMessage.getFreeText());
+                                serviceRequest.setSsr(ssr);
+                                indiv.setServiceRequest(serviceRequest);
+                            }
+
+                            if (outwardMessage.getPaxRef() != null || outwardMessage.getSegmentRef() != null) {
+                                ReferenceInfoType refInfo = new ReferenceInfoType();
+                                List<ReferencingDetailsType> refList = refInfo.getReference();
+
+                                if (outwardMessage.getPaxRef() != null) {
+                                    ReferencingDetailsType paxRef = new ReferencingDetailsType();
+                                    paxRef.setQualifier("PT");
+                                    paxRef.setNumber(outwardMessage.getPaxRef());
+                                    refList.add(paxRef);
+                                }
+
+                                if (outwardMessage.getSegmentRef() != null) {
+                                    ReferencingDetailsType segRef = new ReferencingDetailsType();
+                                    segRef.setQualifier("ST");
+                                    segRef.setNumber(outwardMessage.getSegmentRef());
+                                    refList.add(segRef);
+                                }
+
+                                indiv.setReferenceForDataElement(refInfo);
+                            }
+
+                            dataElementsList.add(indiv);
+                            break;
+                        }
+
+                        default:
+                            break;
+                    }
+
+                }
+            }
+
+            // Attach all indivs to master
+            dataElementsMaster.getDataElementsIndiv().addAll(dataElementsList);
+            element.setDataElementsMaster(dataElementsMaster);
+
+            return element;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error while building outward messages", e);
+        }
+    }
+
 
 }

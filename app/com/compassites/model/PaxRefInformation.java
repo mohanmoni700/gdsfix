@@ -1,6 +1,6 @@
-package com.compassites.model.amadeus;
+package com.compassites.model;
 
-public class AmadeusPaxInformation {
+public class PaxRefInformation {
 
     private String salutation;
 

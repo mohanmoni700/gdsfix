@@ -5,6 +5,7 @@ import com.compassites.model.traveller.TravellerMasterInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dto.IndigoPaxNumber;
 import dto.refund.IndigoRefundRequest;
+import dto.reissue.ReIssueConfirmationRequest;
 import dto.reissue.ReIssueSearchRequest;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -163,6 +164,7 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
     public SearchResponse getReissueSearchResponse(ReIssueSearchRequest reIssueSearchRequest) {
 
         logger.info("Indigo Reissue Search request: {}", Json.toJson(reIssueSearchRequest));
+        System.out.println("Search request: " + Json.toJson(reIssueSearchRequest));
 
         SearchResponse searchResponse = new SearchResponse();
         searchResponse.setReIssueSearch(true);
@@ -206,13 +208,14 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
     }
 
     @Override
-    public TicketCheckEligibilityRes processFullCancellation(String gdsPNR, String searchOfficeId, String ticketingOfficeId, List<String> ticketIdsList) {
+    public TicketCheckEligibilityRes processFullCancellation(String gdsPNR, String searchOfficeId, String ticketingOfficeId, List<String> ticketIdsList, Boolean isSeamen) {
         logger.info("Indigo process reissue ticket request for PNR: " + gdsPNR);
         try {
             IndigoRefundRequest indigoRefundRequest = new IndigoRefundRequest();
             indigoRefundRequest.setGdsPNR(gdsPNR);
             indigoRefundRequest.setSearchOfficeId(searchOfficeId);
             indigoRefundRequest.setTicketingOfficeId(ticketingOfficeId);
+            indigoRefundRequest.setIsSeamen(isSeamen);
             if(ticketIdsList != null && ticketIdsList.size() > 0){
                 indigoRefundRequest.setTicketIdsList(ticketIdsList);
             }
@@ -309,5 +312,33 @@ public class IndigoFlightServiceImpl implements IndigoFlightService {
                     " for PNR: " + gdsPNR, e);
         }
         return null;
+    }
+
+    @Override
+    public PNRResponse confirmReIssue(ReIssueConfirmationRequest reIssueConfirmationRequest) {
+        PNRResponse pnrResponse = null;
+        System.out.println("Indigo confirm reissue request: " + Json.toJson(reIssueConfirmationRequest));
+        logger.info("Indigo confirm reissue request: " + Json.toJson(reIssueConfirmationRequest));
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jsonString = objectMapper.writeValueAsString(reIssueConfirmationRequest);
+            logger.debug("Indigo Partial Refund Request: " + jsonString);
+            RequestBody requestBody = RequestBody.create(jsonString, MediaType.get("application/json; charset=utf-8"));
+            Request request = new Request.Builder().url(endPoint + "confirmReIssue").post(requestBody).build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    indigoLogger.info("Indigo Confirm Reissue Response : " + responseBody);
+                    return objectMapper.readValue(responseBody, PNRResponse.class);
+                } else {
+                    logger.error("Failed to Indigo Confirm Reissue Response: " + response.message() +
+                            " for issuance request: " + Json.toJson(reIssueConfirmationRequest));
+                    throw new Exception("Indigo Confirm Reissue Response: " + response.message());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return pnrResponse;
     }
 }

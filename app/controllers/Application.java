@@ -1,5 +1,8 @@
 package controllers;
 
+import com.compassites.GDSWrapper.amadeus.ServiceHandler;
+import com.amadeus.xml.pnracc_14_1_1a.PNRReply;
+import com.amadeus.xml.qdqlrr_11_1_1a.QueueListReply;
 import com.compassites.GDSWrapper.mystifly.AirMessageQueue;
 import com.compassites.model.*;
 import com.compassites.model.traveller.TravellerMasterInfo;
@@ -12,8 +15,12 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 import dto.*;
+import dto.Upsell.*;
 import dto.ancillary.AncillaryBookingRequest;
 import dto.ancillary.AncillaryBookingResponse;
+import dto.queueManagement.*;
+import dto.refund.AkbarCancelOrRefundRequest;
+import dto.refund.GetRefundAmountRequest;
 import dto.reissue.ReIssueConfirmationRequest;
 import dto.reissue.ReIssueSearchRequest;
 import models.AncillaryServiceRequest;
@@ -28,8 +35,11 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import services.*;
 
+import services.QueueManagement.QueueManagementService;
+import services.akbar.AkbarTravelsApIEntry;
 import services.ancillary.AncillaryService;
 import services.reissue.ReIssueService;
+import services.russian.RussianFlightService;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -94,6 +104,18 @@ public class Application {
 
     @Autowired
     private UtilService utilService;
+
+    @Autowired
+    private UpsellService upsellService;
+
+    @Autowired
+    QueueManagementService queueManagementService;
+
+    @Autowired
+    private AkbarTravelsApIEntry akbarTravelsApIEntry;
+
+    @Autowired
+    private RussianFlightService russianFlightService;
 
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger indigoLogger = LoggerFactory.getLogger("indigo");
@@ -261,20 +283,22 @@ public class Application {
         SearchParameters searchParams = Json.fromJson(json.findPath("searchParams"), SearchParameters.class);
         FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
         String provider = json.get("provider").asText();
+        Long crewOpId = Json.fromJson(json.findPath("crewOpId"), Long.class);
         Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
         int adultCount = Json.fromJson(json.findPath("travellerInfo").findPath("adultCount"), Integer.class);
         int childCount = Json.fromJson(json.findPath("travellerInfo").findPath("childCount"), Integer.class);
         int infantCount = Json.fromJson(json.findPath("travellerInfo").findPath("infantCount"), Integer.class);
 
         TravellerMasterInfo travellerMasterInfo = new TravellerMasterInfo();
+        travellerMasterInfo.setCrewOpId(crewOpId);
         travellerMasterInfo.setAdtultCount(adultCount);
         travellerMasterInfo.setChildCount(childCount);
         travellerMasterInfo.setInfantCount(infantCount);
         travellerMasterInfo.setSeamen(seamen);
         FlightItinerary response = null;
         try {
-            logger.info("Baggage info "+Json.toJson(flightItinerary));
-            response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen,travellerMasterInfo);
+            logger.info("Baggage info " + Json.toJson(flightItinerary));
+            response = flightInfoService.getBaggageInfo(flightItinerary, searchParams, provider, seamen, travellerMasterInfo);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -304,8 +328,9 @@ public class Application {
             FlightItinerary flightItinerary = Json.fromJson(json.findPath("flightItinerary"), FlightItinerary.class);
             String provider = json.get("provider").asText();
             Boolean seamen = Json.fromJson(json.findPath("travellerInfo").findPath("seamen"), Boolean.class);
+            Long crewOpId = Json.fromJson(json.findPath("userId"), Long.class);
 
-            fareCheckRulesJson = flightInfoService.getGenericFareRuleFlightItinerary(flightItinerary, searchParams, seamen, provider);
+            fareCheckRulesJson = flightInfoService.getGenericFareRuleFlightItinerary(flightItinerary, searchParams, seamen, provider, crewOpId);
 
         } catch (Exception e) {
             logger.debug("Error getting MiniRule From FlightItinerary API {} ", e.getMessage(), e);
@@ -402,13 +427,17 @@ public class Application {
         return ok(Json.toJson(masterInfo));
     }
 
+
     @BodyParser.Of(BodyParser.Json.class)
     public Result getBookingDetails() {
         JsonNode json = request().body().asJson();
         String pnr = Json.fromJson(json.findPath("gdsPNR"), String.class);
         String provider = Json.fromJson(json.findPath("provider"), String.class);
+        boolean isSeamenBooking = json.findValue("isSeamen").asBoolean();
+        boolean isUploadBooking = json.findValue("isUploadBooking").asBoolean();
+
         logger.debug("getBookingDetails request : " + json);
-        JsonNode res = bookingService.getBookingDetails(provider, pnr);
+        JsonNode res = bookingService.getBookingDetails(provider, pnr, isUploadBooking, isSeamenBooking);
         logger.debug("getBookingDetails response =>>>>>>>>>>>> " + res);
         return ok(res);
     }
@@ -442,7 +471,7 @@ public class Application {
     public Result commitBooking() {
         logger.info("commitBooking called ");
         JsonNode json = request().body().asJson();
-        logger.info("commitBooking called json "+json.toString());
+        logger.info("commitBooking called json " + json.toString());
         IssuanceRequest issuanceRequest = Json.fromJson(json, IssuanceRequest.class);
         IssuanceResponse issuanceResponse = traveloMatrixBookingService.commitBooking(issuanceRequest);
         logger.info("commitBooking response " + Json.toJson(issuanceResponse));
@@ -489,7 +518,7 @@ public class Application {
     public Result cancelTimeLimitReachedPNR() {
         logger.info("cancelTimeLimitReachedPNR called ");
         JsonNode json = request().body().asJson();
-        logger.debug("json "+json.toString());
+        logger.debug("json " + json.toString());
         String pnr = Json.fromJson(json.findPath("gdsPNR"), String.class);
         String provider = Json.fromJson(json.findPath("provider"), String.class);
         String appRef = Json.fromJson(json.findPath("appRef"), String.class);
@@ -530,7 +559,7 @@ public class Application {
         if (PROVIDERS.AMADEUS.toString().equalsIgnoreCase(provider)) {
 //            AmadeusBookingServiceImpl amadeusBookingService = new AmadeusBookingServiceImpl();
 //        amadeusBookingService.getDisplayTicketDetails(pnr);
-            jsonNode = amadeusBookingService.getBookingDetails(pnr);
+            jsonNode = amadeusBookingService.getBookingDetails(pnr,false,false);
 
         } else {
             TravelportBookingServiceImpl travelportBookingService = new TravelportBookingServiceImpl();
@@ -546,7 +575,7 @@ public class Application {
         if (PROVIDERS.MYSTIFLY.toString().equalsIgnoreCase(provider)) {
             jsonNode = mystiflyBookingService.getBookingDetails(pnr);
         } else if (PROVIDERS.AMADEUS.toString().equalsIgnoreCase(provider)) {
-            jsonNode = amadeusBookingService.getBookingDetails(pnr);
+            jsonNode = amadeusBookingService.getBookingDetails(pnr,false,false);
         }
         return ok(jsonNode);
 
@@ -698,7 +727,12 @@ public class Application {
         String gdspnr = json.get("gdsPnr").asText();
         String searchOfficeId = json.get("searchOffice").asText();
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
-        ticketCheckEligibilityRes = refundServiceWrapper.checkTicketEligibility(provider, gdspnr, searchOfficeId, ticketingOfficeId);
+        Boolean isSeamen = json.get("isSeamen").asBoolean();
+        GetRefundAmountRequest getRefundAmountRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("getRefundAmountRequest") != null) {
+            getRefundAmountRequest = Json.fromJson(json.get("getRefundAmountRequest"), GetRefundAmountRequest.class);
+        }
+        ticketCheckEligibilityRes = refundServiceWrapper.checkTicketEligibility(provider, gdspnr, searchOfficeId, ticketingOfficeId,isSeamen,getRefundAmountRequest);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
@@ -711,7 +745,11 @@ public class Application {
         String searchOfficeId = json.get("searchOffice").asText();
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
         TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
-        ticketProcessRefundRes = refundServiceWrapper.processFullRefund(provider, gdspnr, searchOfficeId, ticketingOfficeId,travellerMasterInfo);
+        AkbarCancelOrRefundRequest akbarCancelOrRefundRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("akbarCancelOrRefundRequest") != null) {
+            akbarCancelOrRefundRequest = Json.fromJson(json.findPath("akbarCancelOrRefundRequest"), AkbarCancelOrRefundRequest.class);
+        }
+        ticketProcessRefundRes = refundServiceWrapper.processFullRefund(provider, gdspnr, searchOfficeId, ticketingOfficeId, travellerMasterInfo, akbarCancelOrRefundRequest);
         return ok(Json.toJson(ticketProcessRefundRes));
     }
 
@@ -721,6 +759,7 @@ public class Application {
         JsonNode json = request().body().asJson();
         String provider = json.get("provider").asText();
         String gdspnr = json.get("gdsPnr").asText();
+        Boolean isSeamen = json.get("isSeamen").asBoolean();
         String searchOfficeId = json.get("searchOffice").asText();
         JsonNode ticketsNode = json.get("tickets");
         String ticketingOfficeId = json.get("ticketingOfficeId").asText();
@@ -732,12 +771,16 @@ public class Application {
         }
         JsonNode ticketIds = json.get("ticketIds");
         List<String> ticketIdsList = new LinkedList<>();
-        if(ticketIds != null && ticketIds.isArray()){
-            for(JsonNode ticketIdNode : ticketIds){
+        if (ticketIds != null && ticketIds.isArray()) {
+            for (JsonNode ticketIdNode : ticketIds) {
                 ticketIdsList.add(ticketIdNode.asText());
             }
         }
-        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,ticketIdsList);
+        GetRefundAmountRequest getRefundAmountRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("getRefundAmountRequest") != null) {
+            getRefundAmountRequest = Json.fromJson(json.get("getRefundAmountRequest"), GetRefundAmountRequest.class);
+        }
+        ticketCheckEligibilityRes = refundServiceWrapper.checkPartRefundTicketEligibility(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, ticketIdsList,isSeamen, getRefundAmountRequest);
         return ok(Json.toJson(ticketCheckEligibilityRes));
     }
 
@@ -762,10 +805,15 @@ public class Application {
         ObjectMapper mapper = new ObjectMapper();
         List<IndigoPaxNumber> indigoPaxNumbers = mapper.convertValue(
                 indigoPaxNumbersNode,
-                new TypeReference<List<IndigoPaxNumber>>() {}
+                new TypeReference<List<IndigoPaxNumber>>() {
+                }
         );
-
-        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId,indigoPaxNumbers, travellerMasterInfo);
+        AkbarCancelOrRefundRequest akbarCancelOrRefundRequest = null;
+        if (provider.equalsIgnoreCase("Akbar") && json.get("akbarCancelOrRefundRequest") != null) {
+            akbarCancelOrRefundRequest = Json.fromJson(json.findPath("akbarCancelOrRefundRequest"), AkbarCancelOrRefundRequest.class);
+        }
+        ticketProcessRefundRes = refundServiceWrapper.processPartialRefund(provider, gdspnr, ticketList, searchOfficeId, ticketingOfficeId, indigoPaxNumbers, travellerMasterInfo,akbarCancelOrRefundRequest);
+        logger.debug("Ticket process refund response {} ", Json.toJson(ticketProcessRefundRes));
         return ok(Json.toJson(ticketProcessRefundRes));
     }
 
@@ -782,7 +830,7 @@ public class Application {
     }
 
 
-    ///Amadeus Ancillary - Baggage
+    /// Amadeus Ancillary - Baggage
     @BodyParser.Of(BodyParser.Json.class)
     public Result addAdditionalBaggageRequestStandalone() {
 
@@ -797,7 +845,7 @@ public class Application {
     }
 
 
-    ///Amadeus Ancillary - Meals
+    /// Amadeus Ancillary - Meals
     @BodyParser.Of(BodyParser.Json.class)
     public Result addMealsRequestStandalone() {
 
@@ -906,24 +954,208 @@ public class Application {
         return ok(Json.toJson(amadeusExchangeRatesMap));
     }
 
+    public Result getQueueListPnrByOID() {
+
+        try {
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Request body is null or not valid JSON");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            QueueListReqDTO queueListReqDTO = Json.fromJson(json, QueueListReqDTO.class);
+            logger.debug("Received QueueListPnrByOID request: {}", Json.toJson(queueListReqDTO));
+
+            Map<String, PnrQueueDetailsDto> reply = queueManagementService.getQueueListFromRes(queueListReqDTO);
+
+            return ok(Json.toJson(reply));
+        } catch (Exception e) {
+            logger.error("Error in getQueueListPnrByOID", e);
+            return internalServerError("Failed to process request");
+        }
+    }
+
+    public Result getPnrRetrieveDetails() {
+
+        try {
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Request is null or not valid JSON");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            String gdsPnr = json.get("gdsPNR").asText();
+            String officeId = json.get("officeId").asText();
+            ObjectMapper mapper = new ObjectMapper();
+            Map<Integer, String> journeyMap = mapper.convertValue(json.get("journeyMap"), new TypeReference<Map<Integer, String>>() {
+            });
+            TravellerMasterInfo travellerMasterInfo = Json.fromJson(json.findPath("masterInfo"), TravellerMasterInfo.class);
+
+            PnrRetrieveResponseDTO pnrRetrieveResponseDTO = amadeusBookingService.getPnrRetrieveForGdsPnr(gdsPnr, officeId, journeyMap, travellerMasterInfo);
+
+            return ok(Json.toJson(pnrRetrieveResponseDTO));
+        } catch (Exception e) {
+            logger.error("Error in getQueueListPnrByOID", e);
+            return internalServerError("Failed to process request");
+        }
+
+    }
+
+    public Result removeSpecificPnrFromQueue() {
+
+        try {
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Not a valid JSON");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            RemovePnrFomQueueDTO removePnrJson = Json.fromJson(json, RemovePnrFomQueueDTO.class);
+
+            RemovePnrFromQueueRes removePnrFromQueueRes = queueManagementService.removePnr(removePnrJson);
+
+            return ok(Json.toJson(removePnrFromQueueRes));
+        } catch (Exception e) {
+            logger.error("Error in removeSpecificPnrFromQueue", e);
+            return internalServerError("Failed to process request");
+        }
+    }
+
+    public Result sendOutwardMessage() {
+
+        try {
+
+            JsonNode json = request().body().asJson();
+            if (json == null) {
+                logger.warn("Not a valid json");
+                return badRequest("Invalid or missing JSON body");
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode outwardNode = json.findPath("outwardMessageList");
+            List<OutwardMessageDTO> outwardMessageList = mapper.convertValue(outwardNode, new TypeReference<List<OutwardMessageDTO>>() {});
+
+            String gdsPnr = json.findPath("gdsPNR").asText();
+
+            PNRReply pnrReply = queueManagementService.outwardMessageRequest(outwardMessageList,gdsPnr);
+
+            List<OutwardMessageDTO> updatedList = queueManagementService.markOutwardMessagesStatus(outwardMessageList, pnrReply);
+
+            return ok(Json.toJson(updatedList));
+        } catch (Exception e) {
+            logger.error("Error in sending outward message", e);
+            return internalServerError("Failed to process request");
+        }
+
+    }
+
     public Result home() {
         return ok("GDS Service running.....");
     }
 
 
     //    AirlineWise Time Limit
-    public Result getAirlineWiseTimeLimit(){
+    public Result getAirlineWiseTimeLimit() {
         JsonNode json = request().body().asJson();
-        logger.debug("-----------------  getAirlineWiseTimeLimit Request: "+json);
+        logger.debug("-----------------  getAirlineWiseTimeLimit Request: " + json);
 
         List<String> gdsPnrList = new ArrayList<>();
         for (JsonNode node : json.get("gdsPNRList")) {
             gdsPnrList.add(node.asText());
         }
 
-        Map<String , PNRResponse> pnrResponseMap  = bookingService.airlineWiseTimeLimit(gdsPnrList);
-        logger.debug("-----------------PNR Response: "+Json.toJson(pnrResponseMap));
+        Map<String, PNRResponse> pnrResponseMap = bookingService.airlineWiseTimeLimit(gdsPnrList);
+        logger.debug("-----------------PNR Response: " + Json.toJson(pnrResponseMap));
         return Controller.ok(Json.toJson(pnrResponseMap));
+    }
+
+    // Free Meals and Seats Confirmation
+    public Result getFreeMealsAndSeatsConfirmation() {
+        JsonNode json = request().body().asJson();
+        TravellerMasterInfo travellerMasterInfo = Json.fromJson(json, TravellerMasterInfo.class);
+        logger.debug("Free Meals and Seats Confirm Request {} ", Json.toJson(travellerMasterInfo));
+        PNRResponse pnrResponse = ancillaryService.getFreeMealsAndSeatsConfirm(travellerMasterInfo);
+        logger.debug("Free Meals and Seats Confirm Response {} ", Json.toJson(pnrResponse));
+        return ok(Json.toJson(pnrResponse));
+    }
+
+
+    // This API is to list available rbd to upsell
+    public Result getAvailableRbdUpsell() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        RbdUpsellReqDto upsellRequest = Json.fromJson(jsonNode, RbdUpsellReqDto.class);
+
+        Map<String, Map<String, List<String>>> availableRbdMap = upsellService.getRbdUpsellAvailability(upsellRequest);
+
+        return ok(Json.toJson(availableRbdMap));
+    }
+
+    // This API is to get the price, baggage and fareBasis for the selected RBD
+    public Result getRbdUpgradePrice() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        PriceRbdUpsellDto requestDto = Json.fromJson(jsonNode, PriceRbdUpsellDto.class);
+
+        RbdUpgradePriceResponse responseDto = upsellService.getRbdUpgradePriceDetails(requestDto);
+
+        return ok(Json.toJson((responseDto)));
+
+    }
+
+
+    // This API update the flightItinerary  for the selected RBD
+    public Result updateFlightItineraryForSelectedRbd() {
+
+        JsonNode jsonNode = request().body().asJson();
+
+        PriceRbdUpsellDto rbdRequestDto = Json.fromJson(jsonNode, PriceRbdUpsellDto.class);
+
+        UpdatedItineraryResponse updatedItinerary = upsellService.updateItineraryForSelectedRbd(rbdRequestDto);
+
+        return ok(Json.toJson((updatedItinerary)));
+
+    }
+
+    //This API completed and issues ticket (Akbar)
+    public Result completePaymentAndIssueTicket() {
+
+        logger.info("GDS Akbar Complete Booking Init");
+        JsonNode jsonNode = request().body().asJson();
+
+        IssuanceRequest issuanceRequest = Json.fromJson(jsonNode, IssuanceRequest.class);
+
+        IssuanceResponse issuanceResponse = akbarTravelsApIEntry.completePaymentAndIssueTicket(issuanceRequest);
+
+        logger.info("GDS Akbar Complete Booking completed");
+        return ok(Json.toJson(issuanceResponse));
+
+    }
+
+    public Result confirmAndIssueTicket(){
+        logger.info("GDS Russian Ticket Init");
+        JsonNode jsonNode = request().body().asJson();
+
+        IssuanceRequest issuanceRequest = Json.fromJson(jsonNode, IssuanceRequest.class);
+
+        IssuanceResponse issuanceResponse = russianFlightService.confirmAndIssueTicket(issuanceRequest);
+
+        return ok(Json.toJson(issuanceResponse));
+    }
+
+    //This api is called to fetch paid Ancillary/SSR information at pax info page
+    public Result getPaidAncillaryAtPaxInfoPage() {
+
+        logger.info("Paid Ancillary at pax info page Init");
+        JsonNode jsonNode = request().body().asJson();
+
+        TravellerMasterInfo travellerMasterInfo = Json.fromJson(jsonNode, TravellerMasterInfo.class);
+        AncillaryServicesResponse ancillaryServicesResponse = ancillaryService.getPaidAncillaryAtPaxInfoPage(travellerMasterInfo);
+
+        logger.info("Paid Ancillary at pax info page Completed");
+        return ok(Json.toJson(ancillaryServicesResponse));
     }
 
 

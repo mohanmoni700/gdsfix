@@ -64,8 +64,6 @@ POST  /processFullRefund            @controllers.Application.processFullRefund()
 POST  /checkPartRefundEligibility   @controllers.Application.checkPartRefundEligibility()
 POST  /processPartialRefund         @controllers.Application.processPartialRefund()
 
-
-
 #Ancillary
 #POST /showAdditionalBaggageInfo     @controllers.Application.addAdditionalBaggageRequest()
 POST  /fetchTmxExtraServices              @controllers.Application.fetchTmxExtraServices()
@@ -73,6 +71,8 @@ POST /showAdditionalBaggageInfoStandalone  @controllers.Application.addAdditiona
 POST /showMealsInfoStandalone             @controllers.Application.addMealsRequestStandalone()
 POST /getAvailableAncillaryServices            @controllers.Application.getAvailableAncillaryServices()
 POST /confirmAncillaryPayment             @controllers.Application.getAncillaryBaggagePaymentConfirmation()
+POST /confirmFreeMealsAndSeats         @controllers.Application.getFreeMealsAndSeatsConfirmation()
+POST /getPaidAncillaryAtPaxInfoPage    @controllers.Application.getPaidAncillaryAtPaxInfoPage()
 
 #Report
 POST    /openTicketReport   @controllers.Application.openTicketReport()
@@ -86,3 +86,22 @@ POST    /getAmadeusExchangeRates   @controllers.Application.getAmadeusExchangeRa
 
 #AirlineTimeLimit
 POST    /getAirlineWiseTimeLimit   @controllers.Application.getAirlineWiseTimeLimit()
+
+
+#Upsell
+POST  /getAvailableRbdUpsell       @controllers.Application.getAvailableRbdUpsell()
+POST /getRbdUpgradePrice           @controllers.Application.getRbdUpgradePrice()
+POST /updateFlightItineraryForSelectedRbd   @controllers.Application.updateFlightItineraryForSelectedRbd()
+
+#Queue Management
+POST /getQueueListPnrByOID             @controllers.Application.getQueueListPnrByOID()
+POST /getRetrievePnrDetails            @controllers.Application.getPnrRetrieveDetails()
+POST /queueRemoveItem                  @controllers.Application.removeSpecificPnrFromQueue()
+POST /sendOutwardMessage               @controllers.Application.sendOutwardMessage()
+
+
+#Akbar
+POST /completePaymentAndIssueTicket         @controllers.Application.completePaymentAndIssueTicket()
+
+#Russian
+POST /confirmAndIssueTicket                 @controllers.Application.confirmAndIssueTicket()

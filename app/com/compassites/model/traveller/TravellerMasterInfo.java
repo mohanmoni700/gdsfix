@@ -28,6 +28,8 @@ public class TravellerMasterInfo {
 
     private String accountId;
 
+    private long crewOpId;
+
     private boolean seamen;
 
     private CabinClass cabinClass;
@@ -51,6 +53,8 @@ public class TravellerMasterInfo {
     private String provider;
     private BigDecimal refundAmount;
     private boolean isRefund;
+    private BigDecimal exchangeRate;
+
 
     public BigDecimal getRefundAmount() {
         return refundAmount;
@@ -122,6 +126,7 @@ public class TravellerMasterInfo {
     public void setPnrMap(Map<String, String> pnrMap) {
         this.pnrMap = pnrMap;
     }
+
     private String userTimezone;
 
     private boolean isCreateTmpPNR;
@@ -233,7 +238,7 @@ public class TravellerMasterInfo {
         this.returnAppRef = returnAppRef;
     }
 
-    private Map<String,Map> benzyFareRuleMap;
+    private Map<String, Map> benzyFareRuleMap;
 
     private boolean bookAndHold;
 
@@ -381,23 +386,31 @@ public class TravellerMasterInfo {
         this.userTimezone = userTimezone;
     }
 
-    public boolean isOfficeIdPricingError() { return isOfficeIdPricingError; }
+    public boolean isOfficeIdPricingError() {
+        return isOfficeIdPricingError;
+    }
 
-    public void setOfficeIdPricingError(boolean pricingError) { isOfficeIdPricingError = pricingError; }
+    public void setOfficeIdPricingError(boolean pricingError) {
+        isOfficeIdPricingError = pricingError;
+    }
 
-    public String getSearchSelectOfficeId() { return searchSelectOfficeId; }
+    public String getSearchSelectOfficeId() {
+        return searchSelectOfficeId;
+    }
 
-    public void setSearchSelectOfficeId(String searchSelectOfficeId) { this.searchSelectOfficeId = searchSelectOfficeId; }
+    public void setSearchSelectOfficeId(String searchSelectOfficeId) {
+        this.searchSelectOfficeId = searchSelectOfficeId;
+    }
 
 
     @JsonIgnore
-    public int getAdultChildPaxCount(){
+    public int getAdultChildPaxCount() {
         int count = 0;
 
-        for(Traveller traveller : this.travellersList){
-            if(traveller.getPassportDetails() != null){
+        for (Traveller traveller : this.travellersList) {
+            if (traveller.getPassportDetails() != null) {
                 PassengerTypeCode passengerTypeCode = DateUtility.getPassengerTypeFromDOB(traveller.getPassportDetails().getDateOfBirth());
-                if(!"INF".equalsIgnoreCase(passengerTypeCode.toString())){
+                if (!"INF".equalsIgnoreCase(passengerTypeCode.toString())) {
                     count = count + 1;
                 }
             }
@@ -433,4 +446,19 @@ public class TravellerMasterInfo {
         this.ticketingOfficeId = ticketingOfficeId;
     }
 
+    public long getCrewOpId() {
+        return crewOpId;
+    }
+
+    public void setCrewOpId(long crewOpId) {
+        this.crewOpId = crewOpId;
+    }
+
+    public BigDecimal getExchangeRate() {
+        return exchangeRate;
+    }
+
+    public void setExchangeRate(BigDecimal exchangeRate) {
+        this.exchangeRate = exchangeRate;
+    }
 }

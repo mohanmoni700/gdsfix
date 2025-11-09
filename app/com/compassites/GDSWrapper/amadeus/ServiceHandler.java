@@ -26,6 +26,8 @@ import com.amadeus.xml.pnrret_14_1_1a.PNRRetrieve;
 import com.amadeus.xml.pnrxcl_14_1_1a.*;
 import com.amadeus.xml.qdqlrq_11_1_1a.QueueList;
 import com.amadeus.xml.qdqlrr_11_1_1a.QueueListReply;
+import com.amadeus.xml.quqmdq_03_1_1a.QueueRemoveItem;
+import com.amadeus.xml.quqmdr_03_1_1a.QueueRemoveItemReply;
 import com.amadeus.xml.satrqt_19_1_1a.AirMultiAvailability;
 import com.amadeus.xml.satrsp_19_1_1a.AirMultiAvailabilityReply;
 import com.amadeus.xml.tarcpq_13_2_1a.TicketReissueConfirmedPricing;
@@ -68,6 +70,9 @@ import com.compassites.model.traveller.TravellerMasterInfo;
 import com.thoughtworks.xstream.XStream;
 import dto.AmadeusConvertCurrencyRQ;
 import dto.OpenTicketDTO;
+import dto.queueManagement.OutwardMessageDTO;
+import dto.queueManagement.QueueListIndividualReqDTO;
+import dto.queueManagement.RemovePnrFomQueueDTO;
 import dto.reissue.ReIssueConfirmationRequest;
 import dto.reissue.ReIssueSearchRequest;
 import models.AmadeusSessionWrapper;
@@ -96,6 +101,7 @@ public class ServiceHandler {
     static Logger amadeusLogger = LoggerFactory.getLogger("amadeus");
     static Logger logger = LoggerFactory.getLogger("gds");
     static Logger loggerTemp = LoggerFactory.getLogger("gds_search");
+    static Logger queueLogger = LoggerFactory.getLogger("queue");
 
     public static String endPoint = null;
 
@@ -298,6 +304,23 @@ public class ServiceHandler {
         return pricePNRWithBookingClassReply;
     }
 
+
+
+    public com.amadeus.xml.tpcbrr_13_2_1a.FarePricePNRWithBookingClassReply pricePNR_13_2(String carrrierCode, PNRReply pnrReply, boolean isSeamen, boolean isDomesticFlight, FlightItinerary flightItinerary, List<AirSegmentInformation> airSegmentList, boolean isSegmentWisePricing, AmadeusSessionWrapper amadeusSessionWrapper, boolean isAddBooking) {
+
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus pricePNR 13.2  called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        com.amadeus.xml.tpcbrq_13_2_1a.FarePricePNRWithBookingClass pricePNRWithBookingClass = new PricePNR13_2().getPNRPricingOption13_2(carrrierCode, pnrReply, isSeamen, isDomesticFlight, flightItinerary, airSegmentList, isSegmentWisePricing, isAddBooking, false, 0);
+        amadeusLogger.debug("FarePricePNRWithBookingClass 13.2 Request {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pricePNRWithBookingClass));
+
+        com.amadeus.xml.tpcbrr_13_2_1a.FarePricePNRWithBookingClassReply pricePNRWithBookingClassReply = mPortType.farePricePNRWithBookingClass(pricePNRWithBookingClass, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        amadeusLogger.debug("FarePricePNRWithBookingClass 13.2 response {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pricePNRWithBookingClassReply));
+
+        return pricePNRWithBookingClassReply;
+    }
+
+
     //This method creates a TST
     public TicketCreateTSTFromPricingReply createTST(int numberOfTST, AmadeusSessionWrapper amadeusSessionWrapper) {
 
@@ -327,6 +350,7 @@ public class ServiceHandler {
 
         return createTSTFromPricingReply;
     }
+
 
     //This method saves a PNR
     public PNRReply savePNR(AmadeusSessionWrapper amadeusSessionWrapper) {
@@ -965,12 +989,12 @@ public class ServiceHandler {
     }
 
     //This uses the latest pricing API
-    public com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply getFareInfo_32(List<Journey> journeys, boolean seamen, int adultCount, int childCount, int infantCount, List<PAXFareDetails> paxFareDetailsList, AmadeusSessionWrapper amadeusSessionWrapper) {
+    public com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply getFareInfo_32(List<Journey> journeys, boolean seamen, int adultCount, int childCount, int infantCount, List<PAXFareDetails> paxFareDetailsList, AmadeusSessionWrapper amadeusSessionWrapper, boolean isUpsell) {
 
         logger.debug("amadeus getFareInfo 13.2 called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
 
-        com.amadeus.xml.tipnrq_13_2_1a.FareInformativePricingWithoutPNR farePricingWithoutPNR = new FareInformation13_2().getPriceInfo(journeys, seamen, adultCount, childCount, infantCount, paxFareDetailsList);
+        com.amadeus.xml.tipnrq_13_2_1a.FareInformativePricingWithoutPNR farePricingWithoutPNR = new FareInformation13_2().getPriceInfo(journeys, seamen, adultCount, childCount, infantCount, paxFareDetailsList, isUpsell);
         amadeusLogger.debug("farePricingWithoutPNRReq  13.2 {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(farePricingWithoutPNR));
 
         com.amadeus.xml.tipnrr_13_2_1a.FareInformativePricingWithoutPNRReply fareInformativePricingPNRReply = mPortType.fareInformativePricingWithoutPNR(farePricingWithoutPNR, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
@@ -1023,14 +1047,27 @@ public class ServiceHandler {
         return pnrReply;
     }
 
+    public PNRReply addOutwardMessagesToPNR(List<OutwardMessageDTO> outwardMessageList,AmadeusSessionWrapper amadeusSessionWrapper) {
 
-    public AirMultiAvailabilityReply getAirMultiAvailability(AmadeusSessionWrapper amadeusSessionWrapper) {
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus Add Outward messages to PNR called   at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        PNRAddMultiElements pnrAddMultiElements = new PNRAddMultiElementsh().addOutwardMessagesToGdsPnr(outwardMessageList);
+        amadeusLogger.debug("PNRAddMultiElements Request -- Add outward message to PNR {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrAddMultiElements));
+
+        PNRReply pnrReply = mPortType.pnrAddMultiElements(pnrAddMultiElements, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        amadeusLogger.debug("PNRReply -- Add outward message to PNR {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(pnrReply));
+
+        return pnrReply;
+    }
+
+    // Lists available rbd for the requested flight itinerary
+    public AirMultiAvailabilityReply getAirMultiAvailability(AmadeusSessionWrapper amadeusSessionWrapper, FlightItinerary flightItinerary, boolean isSeamen) {
 
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
         logger.debug("Amadeus Air MultiAvailability called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
 
-        //Create Your request body here
-        AirMultiAvailability airMultiAvailability = new AirMultiAvailability();
+        AirMultiAvailability airMultiAvailability = new UpsellServicesReq().getAvailableRbdUpsell(flightItinerary, isSeamen);
         amadeusLogger.debug("AirMultiAvailability Request : {} SessionId: {} ---->\n{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(airMultiAvailability));
 
         AirMultiAvailabilityReply airMultiAvailabilityReply = mPortType.airMultiAvailability(airMultiAvailability, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
@@ -1054,6 +1091,7 @@ public class ServiceHandler {
         return fareConvertCurrencyReply;
     }
 
+    //Price the upsell rbd without PNR
     public FarePriceUpsellWithoutPNRReply upsellWithoutPNR(AmadeusSessionWrapper amadeusSessionWrapper) {
 
         amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
@@ -1084,6 +1122,37 @@ public class ServiceHandler {
 
         return farePriceUpsellPNRReply;
     }
+
+    // Queue management
+    public QueueListReply queueListReq(QueueListIndividualReqDTO queueListRQ, AmadeusSessionWrapper amadeusSessionWrapper) {
+
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus queueListReq called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        QueueList queueListReq = QueueListRQ.queueListRequest(queueListRQ);
+        queueLogger.debug("QueueListRequest{} SessionId: {} ---->{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(queueListReq));
+
+        QueueListReply queueListReply = mPortType.queueList(queueListReq, amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        queueLogger.debug("QueueListResponse{} SessionId: {} ---->{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(queueListReply));
+
+        return queueListReply;
+    }
+
+    public QueueRemoveItemReply queueRemoveItem (AmadeusSessionWrapper amadeusSessionWrapper, RemovePnrFomQueueDTO removePnrJson) {
+
+        amadeusSessionWrapper.incrementSequenceNumber(amadeusSessionWrapper, bindingProvider);
+        logger.debug("Amadeus removeItemReq called at {}....................Session Id: {}", new Date(), amadeusSessionWrapper.getSessionId());
+
+        QueueRemoveItem queueRemoveItem = QueueListRQ.removeItemFromQueue(removePnrJson);
+        queueLogger.debug("QueueRemoveItemReq{} SessionId: {} ---->{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(queueRemoveItem));
+
+        QueueRemoveItemReply queueRemoveItemReply = mPortType.queueRemoveItem(queueRemoveItem,amadeusSessionWrapper.getmSession(), amadeusSessionWrapper.getTransactionFlowLinkTypeHolder(), amadeusSessionWrapper.getAmaSecurityHostedUser());
+        queueLogger.debug("QueueRemoveItemRes{} SessionId: {} ---->{}", new Date(), amadeusSessionWrapper.getSessionId(), new XStream().toXML(queueRemoveItemReply));
+
+        return queueRemoveItemReply;
+    }
+
+
 
 
 }

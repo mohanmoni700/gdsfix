@@ -1,10 +1,18 @@
 package dto;
 
-public class AmadeusSegmentRefDTO {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class SegmentRefDTO {
 
     private String segmentRefNo;
 
     private String lineNumber;
+
+    private List<String> segmentStatus;
+
 
     public String getSegmentRefNo() {
         return segmentRefNo;
@@ -22,4 +30,11 @@ public class AmadeusSegmentRefDTO {
         this.lineNumber = lineNumber;
     }
 
+    public List<String> getSegmentStatus() {
+        return segmentStatus;
+    }
+
+    public void setSegmentStatus(List<String> segmentStatus) {
+        this.segmentStatus = segmentStatus;
+    }
 }
