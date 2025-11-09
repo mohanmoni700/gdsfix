@@ -77,7 +77,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
                     ticketProcessEDocReply = serviceHandler.ticketProcessEDoc(ticketList, amadeusSessionWrapper);
                     //4 iterationsl
                     Boolean notUsed = ticketProcessEDocReply.getDocGroup().stream().flatMap(docGroup ->
-                        docGroup.getDocDetailsGroup().stream()).flatMap(docDetailsGroup -> docDetailsGroup.getCouponGroup().stream()).
+                                    docGroup.getDocDetailsGroup().stream()).flatMap(docDetailsGroup -> docDetailsGroup.getCouponGroup().stream()).
                             flatMap(couponGroup -> couponGroup.getCouponInfo().getCouponDetails().stream()).
                             anyMatch(couponInformationDetailsTypeI -> couponInformationDetailsTypeI.getCpnStatus().equalsIgnoreCase("I"));
                     Boolean errorStatus = Boolean.FALSE;
@@ -149,7 +149,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
                                 flatMap(couponGroup -> couponGroup.getCouponInfo().getCouponDetails().stream()).
                                 anyMatch(couponInformationDetailsTypeI -> couponInformationDetailsTypeI.getCpnStatus().equalsIgnoreCase("AL"));
                         if(anyAirportControl){
-                          String ticketsWithAL = getTicketListwithAL(ticketProcessEDocReply);
+                            String ticketsWithAL = getTicketListwithAL(ticketProcessEDocReply);
                             errorMessage.setMessage("Tickets: "+ticketsWithAL + "are not refundable. Contact Airport control.Proceed with partial refund for other tickets" );
                         }
 
@@ -250,7 +250,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
 
 
 //                                PNRReply cancelFullPNR = serviceHandler.cancelFullPNR(gdsPnr,pnrReply,amadeusSessionWrapper,Boolean.TRUE);
-                                  cancelFullPNR = cancelService.cancelOnlyItineraryFromPNR(gdsPnr, false);
+                                cancelFullPNR = cancelService.cancelOnlyItineraryFromPNR(gdsPnr, false);
 
                                 if(cancelFullPNR.isSuccess() && cancelFullPNR.getErrorMessage() == null){
                                     logger.debug("PNR Cancelled for PNR : {}",gdsPnr);
@@ -327,7 +327,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
                     Boolean notUsed = ticketProcessEDocReply.getDocGroup().stream().flatMap(docGroup ->
                                     docGroup.getDocDetailsGroup().stream()).flatMap(docDetailsGroup -> docDetailsGroup.getCouponGroup().stream()).
                             flatMap(couponGroup -> couponGroup.getCouponInfo().getCouponDetails().stream()).
-                           anyMatch(couponInformationDetailsTypeI -> couponInformationDetailsTypeI.getCpnStatus().equalsIgnoreCase("I"));
+                            anyMatch(couponInformationDetailsTypeI -> couponInformationDetailsTypeI.getCpnStatus().equalsIgnoreCase("I"));
                     if (notUsed) {
                         //process initRefund.
                         amaTicketInitRefundRS = refundServiceHandler.ticketInitRefund(refundticketList, amadeusSessionWrapper,searchOfficeId);
@@ -577,7 +577,7 @@ public class AmadeusRefundServiceImpl implements RefundService{
                 }
             }
         }
-     return tickets;
+        return tickets;
     }
 
     public String getUsedTickets(TicketProcessEDocReply ticketProcessEDocReply){

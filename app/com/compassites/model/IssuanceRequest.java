@@ -21,9 +21,9 @@ public class IssuanceRequest implements Serializable{
     private int childCount;
 
     private int infantCount;
-    
+
     private String gdsPNR;
-    
+
     private String provider;
 
     private boolean isSeamen;
@@ -269,14 +269,14 @@ public class IssuanceRequest implements Serializable{
     }
 
     public String getProvider() {
-		return provider;
-	}
+        return provider;
+    }
 
-	public void setProvider(String provider) {
-		this.provider = provider;
-	}
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
 
-	public List<Traveller> getTravellerList() {
+    public List<Traveller> getTravellerList() {
         return travellerList;
     }
 
@@ -310,10 +310,10 @@ public class IssuanceRequest implements Serializable{
 
     public String getJocPNR() {
         return jocPNR;
-   }
+    }
 
     public void setJocPNR(String jocPNR) {
-      this.jocPNR = jocPNR;
+        this.jocPNR = jocPNR;
     }
 
     public List<Traveller> getBookingTravellerList() {

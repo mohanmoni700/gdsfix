@@ -38,7 +38,7 @@ public class PNRAddMultiElementsh {
         pnrActions.getOptionCode().add(new BigInteger("0"));
         element.setPnrActions(pnrActions);
         addLiveEntry(element, travellerMasterInfo);
-System.out.println("**********getMultiElements**********"+travellerMasterInfo.getItinerary().getJourneyList().get(0).isSeamen());
+        System.out.println("**********getMultiElements**********"+travellerMasterInfo.getItinerary().getJourneyList().get(0).isSeamen());
         if (travellerMasterInfo.getAdditionalInfo() != null && travellerMasterInfo.getAdditionalInfo().getAddBooking() == null) {
             System.out.println("teststs");
             element.getTravellerInfo().addAll(getPassengersList(travellerMasterInfo));
@@ -216,7 +216,7 @@ System.out.println("**********getMultiElements**********"+travellerMasterInfo.ge
 
             String passengerType = DateUtility.getPassengerTypeFromDOB(traveller.getPassportDetails().getDateOfBirth()).toString();
             if (isSplitTicket) {
-              
+
                 FlightItinerary flightItinerary = travellerMasterInfo.getItinerary();
                 if (flightItinerary.getJourneyList().get(0).isSeamen()) {
                     passenger.setType(PassengerTypeCode.SEA.toString());
