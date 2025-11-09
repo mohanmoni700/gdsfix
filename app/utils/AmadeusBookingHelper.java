@@ -2167,19 +2167,18 @@ public class AmadeusBookingHelper {
                 List<FarePricePNRWithBookingClassReply.FareList> fareLists = pricePNRWithBookingClassReply.getFareList();
 
                 for (FarePricePNRWithBookingClassReply.FareList fareList : fareLists) {
-                        Set<String> segmentList = new HashSet<>();
+                    Set<String> segmentList = new HashSet<>();
 
-                        for (Journey journey : journeyList) {
-                            if (journey != null && journey.getProvider() != null && !journey.getProvider().equalsIgnoreCase("Indigo")) {
-                                List<AirSegmentInformation> airSegmentList= journey.getAirSegmentList();
-                                if (airSegmentList != null && !airSegmentList.isEmpty()) {
-                                    for (AirSegmentInformation airSegmentInformation : airSegmentList) {
-                                        String origin = airSegmentInformation.getFromLocation();
-                                        String destination = airSegmentInformation.getToLocation();
-                                        if (origin != null && destination != null) {
-                                            segmentList.add(origin);
-                                            segmentList.add(destination);
-                                        }
+                    for (Journey journey : journeyList) {
+                        if (journey != null && journey.getProvider() != null && !journey.getProvider().equalsIgnoreCase("Indigo")) {
+                            List<AirSegmentInformation> airSegmentList= journey.getAirSegmentList();
+                            if (airSegmentList != null && !airSegmentList.isEmpty()) {
+                                for (AirSegmentInformation airSegmentInformation : airSegmentList) {
+                                    String origin = airSegmentInformation.getFromLocation();
+                                    String destination = airSegmentInformation.getToLocation();
+                                    if (origin != null && destination != null) {
+                                        segmentList.add(origin);
+                                        segmentList.add(destination);
                                     }
                                 }
                             }
