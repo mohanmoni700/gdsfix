@@ -6,6 +6,28 @@ lazy val root = (project in file(".")).enablePlugins(PlayJava)
 
 scalaVersion := "2.11.1"
 
+
+// ----------------------------------------------------
+// FIX: Add resolvers so Ivy can find ALL dependencies
+// ----------------------------------------------------
+resolvers ++= Seq(
+  "Maven Central" at "https://repo1.maven.org/maven2",
+  "Typesafe Releases" at "https://repo.typesafe.com/typesafe/releases/",
+  "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases/"
+)
+
+// ----------------------------------------------------
+// FIX: Force a known-good version of gmbal
+// 4.0.3 is fully compatible with jaxws-rt:2.3.3
+// ----------------------------------------------------
+dependencyOverrides += "org.glassfish.gmbal" % "gmbal" % "4.0.3"
+
+// ----------------------------------------------------
+// Dependencies
+// ----------------------------------------------------
+
+
+
 libraryDependencies ++= Seq(
   javaJdbc,
   javaEbean,
